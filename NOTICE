@@ -1,0 +1,6 @@
+PayWarden
+Third-party dependencies and licences (updated as they are added):
+
+- OpenZeppelin Contracts - MIT - github.com/OpenZeppelin/openzeppelin-contracts
+- forge-std - MIT OR Apache-2.0 - github.com/foundry-rs/forge-std
+- ERC-8004 IdentityRegistry reference (github.com/erc-8004/erc-8004-contracts) - licence to be checked, then credited here

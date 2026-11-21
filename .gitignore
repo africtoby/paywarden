@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+out/
+cache/
+broadcast/
+contracts/out/
+contracts/cache/
+*.pem
+*.key
+.DS_Store
