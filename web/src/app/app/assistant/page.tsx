@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Sweep } from "@/components/sweep";
 import { isAddress, zeroAddress, type Address } from "viem";
 import { AllowanceMeter } from "@/components/allowance-meter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { permissionSentence } from "@/lib/assistant-sentence";
+import { permissionParts } from "@/lib/assistant-sentence";
 import { agentSpendPolicyAbi, payrollVaultAbi, TOKEN_SYMBOL } from "@/lib/contracts";
 import { addressUrl } from "@/lib/chain";
 import { formatAmount, formatDuration, parseAmount, shortAddress } from "@/lib/format";
@@ -38,6 +40,7 @@ export default function AssistantPage() {
   const [expiryDays, setExpiryDays] = useState("90");
   const [busy, setBusy] = useState(false);
   const [confirmOff, setConfirmOff] = useState(false);
+  const reduce = useReducedMotion();
 
   if (!v.isConnected) return <p className="pt-10 text-[16px] text-muted-foreground">Connect your wallet to manage your assistant.</p>;
   if (v.loading)
@@ -89,7 +92,7 @@ export default function AssistantPage() {
   const expiry0 = Number(expiryDays);
   const sentence =
     now > 0 && live.every((x) => x !== null && x > 0n) && days0 > 0 && expiry0 > 0
-      ? permissionSentence({
+      ? permissionParts({
           perPayee: live[0]!,
           perRun: live[1]!,
           periodCap: live[2]!,
@@ -109,7 +112,24 @@ export default function AssistantPage() {
       </p>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <section aria-labelledby="now" className="panel-dark rounded-2xl border border-border p-6">
+        <section
+          aria-labelledby="now"
+          className="panel-dark relative rounded-2xl border border-border p-6 transition-[filter] duration-500 data-[off=true]:saturate-0"
+          data-off={v.revoked}
+        >
+          <AnimatePresence>
+            {v.revoked && hasAgent && (
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute right-5 top-5 rounded-md border-2 border-[var(--refused)] px-3 py-1 font-mono text-[13px] uppercase tracking-[0.12em] text-[var(--refused)]"
+                initial={reduce ? { rotate: -6 } : { opacity: 0, scale: 1.5, rotate: 8 }}
+                animate={{ opacity: 0.9, scale: 1, rotate: -6 }}
+                transition={{ type: "spring", stiffness: 380, damping: 22 }}
+              >
+                Switched off
+              </motion.div>
+            )}
+          </AnimatePresence>
           <h2 id="now" className="text-[22px]">Current permissions</h2>
           {hasAgent && p ? (
             <>
@@ -136,8 +156,18 @@ export default function AssistantPage() {
                     Switch off
                   </Button>
                 )}
+                <AnimatePresence initial={false}>
                 {!v.revoked && confirmOff && (
-                  <div role="group" aria-label="Confirm switching off" className="w-full rounded-xl border border-[var(--refused)]/50 p-4">
+                  <motion.div
+                    role="group"
+                    aria-label="Confirm switching off"
+                    className="w-full overflow-hidden"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.22, ease: "easeOut" }}
+                  >
+                  <div className="rounded-xl border border-[var(--refused)]/50 p-4">
                     <p className="text-[14px]">Switch off the assistant? It will not be able to draft runs until you set new permissions.</p>
                     <div className="mt-3 flex flex-wrap gap-3">
                       <Button autoFocus variant="outline" className="rounded-full border-[var(--refused)] bg-[var(--refused)]/10 text-[var(--refused)] hover:bg-[var(--refused)]/20"
@@ -150,7 +180,9 @@ export default function AssistantPage() {
                       </Button>
                     </div>
                   </div>
+                  </motion.div>
                 )}
+                </AnimatePresence>
                 <Button variant="outline" className="rounded-full border-[var(--mist)]/30 bg-transparent text-[var(--mist)] hover:bg-[var(--mist)]/10 hover:text-[var(--mist)]"
                   onClick={() => tx("Register assistant identity", { address: vault, abi: payrollVaultAbi, functionName: "registerAgentIdentity" })}>
                   Register assistant identity
@@ -174,7 +206,9 @@ export default function AssistantPage() {
             </div>
             <Field id="expiry" label="Lasts (days)" value={expiryDays} set={setExpiryDays} mode="numeric" />
             <p className="min-h-[3.75rem] rounded-xl bg-muted/60 p-3 text-[14px]">
-              {sentence ?? "Fill in each limit to see what the assistant will be allowed to do."}
+              {sentence
+                ? sentence.map((part, i) => (part.value ? <Sweep key={i} value={part.text}>{part.text}</Sweep> : <span key={i}>{part.text}</span>))
+                : "Fill in each limit to see what the assistant will be allowed to do."}
             </p>
             <p className="text-[12px] text-muted-foreground">Leave a limit empty to keep its current value.</p>
             <Button className="w-fit rounded-full" disabled={busy || !agentValid} onClick={save}>

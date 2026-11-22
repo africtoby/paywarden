@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { WalletButton } from "@/components/wallet-button";
 import { zeroAddress } from "viem";
 import { AllowanceMeter } from "@/components/allowance-meter";
@@ -12,6 +13,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { addressUrl, txUrl } from "@/lib/chain";
 import { describeEvent } from "@/lib/describe-event";
 import { formatAmount, formatDuration, shortAddress, shortHash } from "@/lib/format";
+import { useFreshKeys } from "@/lib/use-fresh";
 import { useVaultEvents, type VaultEvent } from "@/lib/use-logs";
 import { useVault } from "@/lib/use-vault";
 import { useTx } from "@/lib/use-tx";
@@ -28,9 +30,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 const NEXT: Record<string, { kind: ChipKind; text: string }> = {
   RunProposed: { kind: "awaiting", text: "Awaiting" },
-  RunApproved: { kind: "awaiting", text: "Approved" },
+  RunApproved: { kind: "signed", text: "Signed" },
   RunCancelled: { kind: "refused", text: "Cancelled" },
-  RunExecuted: { kind: "signed", text: "Signed" },
+  RunExecuted: { kind: "signed", text: "Paid" },
 };
 
 /** The latest drafted run and where it stands, read from the event log. */
@@ -93,7 +95,7 @@ export default function Overview() {
     <div className="grid gap-8 pt-4">
       <BalanceCard balance={v.balance ?? 0n} paused={v.paused} />
 
-      {step < 3 && <Wizard />}
+      <Wizard />
 
       {step === 3 && v.policy && v.vault && (
         <div className="grid gap-6 md:grid-cols-2">
@@ -151,6 +153,8 @@ export default function Overview() {
 function RecentActivity({ events, loading }: { events?: readonly VaultEvent[]; loading: boolean }) {
   const run = latestRun(events ?? []);
   const recent = [...(events ?? [])].reverse().slice(0, 5);
+  const fresh = useFreshKeys(recent.map((e) => e.txHash + e.logIndex), loading);
+  const reduce = useReducedMotion();
   return (
     <section aria-labelledby="recent" className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -175,17 +179,38 @@ function RecentActivity({ events, loading }: { events?: readonly VaultEvent[]; l
         <p className="text-[14px] text-muted-foreground">Nothing yet.</p>
       ) : (
         <ul className="divide-y divide-border border-y border-border">
-          {recent.map((e) => (
-            <li key={e.txHash + e.logIndex} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3">
-              <span className="meta w-[110px] shrink-0 text-muted-foreground">
-                {new Date(e.timestamp * 1000).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-              </span>
-              <span className="min-w-0 flex-1 text-[14px]">{describeEvent(e)}</span>
-              <a href={txUrl(e.txHash)} target="_blank" rel="noreferrer" className="font-mono text-[12px] text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
-                {shortHash(e.txHash)}
-              </a>
-            </li>
-          ))}
+          <AnimatePresence initial={false}>
+            {recent.map((e) => {
+              const k = e.txHash + e.logIndex;
+              return (
+                <motion.li
+                  key={k}
+                  layout="position"
+                  initial={{ opacity: 0, y: -14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  className="relative flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3"
+                >
+                  {fresh.has(k) && !reduce && (
+                    <motion.span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 bg-[var(--gold)]"
+                      initial={{ opacity: 0.28 }}
+                      animate={{ opacity: 0 }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
+                    />
+                  )}
+                  <span className="meta relative w-[110px] shrink-0 text-muted-foreground">
+                    {new Date(e.timestamp * 1000).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <span className="relative min-w-0 flex-1 text-[14px]">{describeEvent(e)}</span>
+                  <a href={txUrl(e.txHash)} target="_blank" rel="noreferrer" className="relative font-mono text-[12px] text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
+                    {shortHash(e.txHash)}
+                  </a>
+                </motion.li>
+              );
+            })}
+          </AnimatePresence>
         </ul>
       )}
     </section>

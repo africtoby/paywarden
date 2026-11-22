@@ -1,6 +1,6 @@
 import { Halftone } from "@/components/landing/halftone";
 import { TOKEN_SYMBOL } from "@/lib/contracts";
-import { formatAmount } from "@/lib/format";
+import { Balance } from "@/components/count-up";
 
 /** The vault balance as a dark forest panel with a faint engraved texture behind it. */
 export function BalanceCard({ balance, paused }: { balance: bigint; paused?: boolean }) {
@@ -12,7 +12,7 @@ export function BalanceCard({ balance, paused }: { balance: bigint; paused?: boo
           Vault balance
         </p>
         <p className="tnum mt-2 font-serif text-[56px] font-light leading-none tracking-[-0.02em]">
-          {formatAmount(balance)} <span className="text-[22px] text-muted-foreground">{TOKEN_SYMBOL}</span>
+          <Balance value={balance} /> <span className="text-[22px] text-muted-foreground">{TOKEN_SYMBOL}</span>
         </p>
         {paused && (
           <p role="status" className="mt-4 inline-block rounded-full bg-[var(--refused)]/15 px-3 py-1 text-[13px] text-[var(--refused)]">

@@ -39,7 +39,8 @@ export function useTx() {
         const receipt = await client.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success") throw new Error("The transaction was reverted.");
         toast.success(`${label}: confirmed`, { id, action: view });
-        await qc.invalidateQueries();
+        // Refresh in the background: callers get the hash as soon as the receipt is in.
+        void qc.invalidateQueries();
         return hash;
       } catch (e) {
         toast.error(`${label} failed`, { id, description: explainError(e) });

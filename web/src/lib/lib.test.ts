@@ -6,7 +6,8 @@ import { explainRevert, MESSAGES } from "./errors";
 import { payrollVaultAbi, agentSpendPolicyAbi } from "./contracts";
 import { evaluateDraft, type DemoPolicy } from "./demo-rules";
 import { checkRun } from "./run-checks";
-import { permissionSentence } from "./assistant-sentence";
+import { permissionParts, permissionSentence } from "./assistant-sentence";
+import { freshKeys } from "./use-fresh";
 
 describe("landing demo rules mirror the contract", () => {
   const ada = "0x7a3f00000000000000000000000000000000a91c";
@@ -128,5 +129,19 @@ describe("permission sentence", () => {
     const s = permissionSentence({ perPayee: 800_000_000n, perRun: 2_000_000_000n, periodCap: 5_000_000_000n, periodDays: 30, expiry: null });
     expect(s).toContain("up to 800 per person, 2,000 per run and 5,000 a month");
     expect(s).toContain("no end date");
+  });
+});
+
+describe("motion helpers", () => {
+  it("nothing is fresh until the first load has been seen", () => {
+    expect(freshKeys(null, ["a", "b"])).toEqual([]);
+    expect(freshKeys(new Set(["a"]), ["a", "b", "c"])).toEqual(["b", "c"]);
+  });
+
+  it("permission parts join back into the same sentence and mark the changeable figures", () => {
+    const input = { perPayee: 800_000_000n, perRun: 2_000_000_000n, periodCap: 5_000_000_000n, periodDays: 30, expiry: 1_800_000_000 };
+    const parts = permissionParts(input);
+    expect(parts.map((p) => p.text).join("")).toBe(permissionSentence(input));
+    expect(parts.filter((p) => p.value).map((p) => p.text).slice(0, 3)).toEqual(["800", "2,000", "5,000"]);
   });
 });

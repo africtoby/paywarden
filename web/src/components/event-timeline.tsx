@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import { motion } from "framer-motion";
 import { txUrl } from "@/lib/chain";
 import { describeEvent } from "@/lib/describe-event";
 import { shortHash } from "@/lib/format";
@@ -19,11 +23,29 @@ export function EventTimeline({
   label?: (e: VaultEvent) => string;
   withDate?: boolean;
 }) {
+  // Rows present on first render stack in one after another as the rail grows; later arrivals slide in at the top.
+  const [first] = useState<ReadonlySet<string>>(() => new Set(events.map((e) => e.txHash + e.logIndex)));
   return (
     <ol className="relative grid gap-6 pl-9">
-      <span className="absolute bottom-2 left-[7px] top-2 w-px bg-[var(--foreground)]/15" aria-hidden />
-      {events.map((e) => (
-        <li key={e.txHash + e.logIndex} className="relative grid gap-1 md:grid-cols-[120px_1fr_auto] md:items-baseline md:gap-4">
+      <motion.span
+        className="absolute bottom-2 left-[7px] top-2 w-px origin-top bg-[var(--foreground)]/15"
+        aria-hidden
+        initial={{ scaleY: 0 }}
+        animate={{ scaleY: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      />
+      {events.map((e, i) => {
+        const k = e.txHash + e.logIndex;
+        const loaded = first.has(k);
+        return (
+        <motion.li
+          key={k}
+          layout="position"
+          initial={{ opacity: 0, y: loaded ? 6 : -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut", delay: loaded ? Math.min(i, 12) * 0.04 : 0 }}
+          className="relative grid gap-1 md:grid-cols-[120px_1fr_auto] md:items-baseline md:gap-4"
+        >
           <span
             className="absolute -left-9 top-1.5 grid size-[15px] place-items-center rounded-full border border-[var(--foreground)] bg-background"
             aria-hidden
@@ -40,8 +62,9 @@ export function EventTimeline({
           >
             {shortHash(e.txHash)}
           </a>
-        </li>
-      ))}
+        </motion.li>
+        );
+      })}
     </ol>
   );
 }

@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { formatAmount } from "@/lib/format";
 import { TOKEN_SYMBOL } from "@/lib/contracts";
 
@@ -21,7 +24,12 @@ export function AllowanceMeter({ cap, remaining }: { cap: bigint; remaining: big
         aria-valuenow={Math.round(pct)}
         className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted"
       >
-        <div className="h-full rounded-full bg-[var(--gold)]" style={{ width: `${pct}%` }} />
+        <motion.div
+          className="h-full w-full origin-left rounded-full bg-[var(--gold)]"
+          initial={false}
+          animate={{ scaleX: pct / 100 }}
+          transition={{ type: "spring", stiffness: 140, damping: 22 }}
+        />
       </div>
     </div>
   );

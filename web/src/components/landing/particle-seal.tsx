@@ -21,7 +21,7 @@ const FOCAL = 3;
  * Hero backdrop: about 2,500 gold particles fly in and assemble into our guilloche seal,
  * which then turns slowly in 3D. Plain canvas 2D, no three.js.
  */
-export function ParticleSeal({ className, seed = "paywarden" }: { className?: string; seed?: string }) {
+export function ParticleSeal({ className, seed = "paywarden", tilt = true }: { className?: string; seed?: string; /** Follow the pointer. Off for small in-app uses. */ tilt?: boolean }) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const pulseAt = useRef<number | null>(null);
@@ -150,7 +150,7 @@ export function ParticleSeal({ className, seed = "paywarden" }: { className?: st
     const ro = new ResizeObserver(resize);
     ro.observe(box);
     io.observe(box);
-    if (!reduce) window.addEventListener("pointermove", move, { passive: true });
+    if (!reduce && tilt) window.addEventListener("pointermove", move, { passive: true });
     window.addEventListener(PAID_EVENT, pulse);
 
     return () => {
@@ -160,7 +160,7 @@ export function ParticleSeal({ className, seed = "paywarden" }: { className?: st
       window.removeEventListener("pointermove", move);
       window.removeEventListener(PAID_EVENT, pulse);
     };
-  }, [seed, reduce]);
+  }, [seed, reduce, tilt]);
 
   return (
     <div ref={wrap} aria-hidden className={cn("pointer-events-none", className)}>

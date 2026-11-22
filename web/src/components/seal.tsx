@@ -51,22 +51,34 @@ type SealProps = {
   size?: number;
   /** Draw the lines in (used when a payee has just confirmed). */
   animate?: boolean;
+  /** Dashed circle breathes slowly: the payee is waiting to confirm. */
+  breathe?: boolean;
   className?: string;
 };
 
-export function Seal({ address, size = 40, animate = false, className }: SealProps) {
+export function Seal({ address, size = 40, animate = false, breathe = false, className }: SealProps) {
   const reduce = useReducedMotion();
   const paths = useMemo(() => (address ? buildPaths(address, 100) : []), [address]);
 
   if (!address) {
+    // Waiting for the payee: the dashed circle breathes slowly.
     return (
-      <svg width={size} height={size} viewBox="0 0 100 100" className={className} role="img" aria-label="Not a confirmed payee">
+      <motion.svg
+        width={size}
+        height={size}
+        viewBox="0 0 100 100"
+        className={className}
+        role="img"
+        aria-label="Not a confirmed payee"
+        animate={reduce || !breathe ? undefined : { opacity: [0.55, 1, 0.55], scale: [1, 1.05, 1] }}
+        transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+      >
         <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeOpacity="0.4" strokeWidth="2" strokeDasharray="5 6" />
-      </svg>
+      </motion.svg>
     );
   }
 
-  return (
+  const seal = (
     <svg
       width={size}
       height={size}
@@ -89,5 +101,25 @@ export function Seal({ address, size = 40, animate = false, className }: SealPro
         />
       ))}
     </svg>
+  );
+
+  if (!animate || reduce) return seal;
+  // Just confirmed: the dashed circle melts away while the seal draws in over it.
+  return (
+    <span className="relative inline-flex">
+      {seal}
+      <motion.svg
+        aria-hidden
+        width={size}
+        height={size}
+        viewBox="0 0 100 100"
+        className="pointer-events-none absolute inset-0"
+        initial={{ opacity: 1, scale: 1 }}
+        animate={{ opacity: 0, scale: 1.12 }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+      >
+        <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeOpacity="0.4" strokeWidth="2" strokeDasharray="5 6" />
+      </motion.svg>
+    </span>
   );
 }

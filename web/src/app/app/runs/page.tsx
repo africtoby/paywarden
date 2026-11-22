@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useReadContracts } from "wagmi";
 import type { Address, Hex } from "viem";
+import { PaidCelebration } from "@/components/paid-celebration";
+import { RippleField, type RippleHandle } from "@/components/landing/ripple-field";
+import { ReviewRing } from "@/components/review-ring";
 import { EventTimeline } from "@/components/event-timeline";
 import { Seal } from "@/components/seal";
 import { SignatureMark } from "@/components/signature-mark";
@@ -36,16 +39,16 @@ const time = (ts: number) => new Date(ts * 1000).toLocaleTimeString("en-GB", { h
 const CHIP: Record<RunStatus, { text: string; kind: ChipKind }> = {
   None: { text: "UNKNOWN", kind: "idle" },
   Proposed: { text: "AWAITING", kind: "awaiting" },
-  Approved: { text: "APPROVED", kind: "awaiting" },
+  Approved: { text: "SIGNED", kind: "signed" },
   Cancelled: { text: "CANCELLED", kind: "refused" },
-  Executed: { text: "SIGNED", kind: "signed" },
+  Executed: { text: "PAID", kind: "signed" },
 };
 
 const STEP_NAME: Record<string, string> = {
   RunProposed: "Drafted",
-  RunApproved: "Approved",
+  RunApproved: "Signed",
   RunCancelled: "Cancelled",
-  RunExecuted: "Signed and paid",
+  RunExecuted: "Paid",
 };
 
 /** One check, ticking in 80ms after the one before it. */
@@ -61,6 +64,47 @@ function Check({ ok, label, i }: { ok: boolean; label: string; i: number }) {
       <span>{label}</span>
       <span className={ok ? "text-[var(--signed)]" : "text-[var(--refused)]"}>{ok ? "✓ PASS" : "✕ FAIL"}</span>
     </motion.li>
+  );
+}
+
+const rippled = new Set<string>();
+
+/** The red "Refused by the contract" card. Engraved lines sit behind it and ripple red, once per run. */
+function RefusalCard({ runKey, reason }: { runKey: string; reason: string }) {
+  const card = useRef<HTMLElement>(null);
+  const ripple = useRef<RippleHandle>(null);
+  useEffect(() => {
+    if (rippled.has(runKey)) return;
+    rippled.add(runKey);
+    const t = setTimeout(() => {
+      const r = card.current?.getBoundingClientRect();
+      if (r) ripple.current?.fire(r.left + r.width / 2, r.top + r.height / 2, "refuse");
+    }, 280);
+    return () => clearTimeout(t);
+  }, [runKey]);
+  return (
+    <section ref={card} role="alert" className="relative overflow-hidden rounded-2xl border border-[var(--refused)]/60 bg-[var(--refused)]/10 p-5 md:col-span-2">
+      <RippleField ref={ripple} className="absolute inset-0 size-full" />
+      <h2 className="relative text-[22px] text-[var(--refused)]">Refused by the contract</h2>
+      <p className="relative mt-2 text-[16px]">{reason}</p>
+    </section>
+  );
+}
+
+/** Button that turns into a progress state while its transaction is pending. */
+function ActionButton({ pending, busyLabel, children, ...props }: { pending: boolean; busyLabel: string } & React.ComponentProps<typeof Button>) {
+  return (
+    <Button {...props} disabled={props.disabled || pending} aria-busy={pending} className={cn("relative overflow-hidden rounded-full", props.className)}>
+      {pending ? busyLabel : children}
+      {pending && (
+        <motion.span
+          aria-hidden
+          className="absolute bottom-0 left-0 h-0.5 w-1/3 bg-current opacity-70"
+          animate={{ x: ["-100%", "300%"] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+        />
+      )}
+    </Button>
   );
 }
 
@@ -83,6 +127,22 @@ export default function RunsPage() {
   const events = useVaultEvents(v.vault, v.policyAddress);
   const [open, setOpen] = useState<Hex | null>(null);
   const [names, setNames] = useState<Map<string, string>>(new Map());
+  const [pending, setPending] = useState<string | null>(null);
+  const [celebrate, setCelebrate] = useState<Hex | null>(null);
+  const reduce = useReducedMotion();
+
+  const act = async (id: string, label: string, req: Parameters<typeof tx>[1]) => {
+    setPending(id);
+    const hash = await tx(label, req);
+    setPending(null);
+    return hash;
+  };
+  const signAndPay = async (key: Hex, req: Parameters<typeof tx>[1]) => {
+    const hash = await act(`${key}:pay`, "Sign and pay", req);
+    if (!hash) return;
+    // The signature and the fan play first; the PAID chip lands when they are done (see the effect below).
+    setCelebrate(key);
+  };
 
   useEffect(() => {
     const vault = v.vault;
@@ -123,6 +183,14 @@ export default function RunsPage() {
     for (const e of events.data ?? []) if (e.name === "PayeeConfirmed") m.set(String(e.args.payeeId), e.args.wallet as Address);
     return m;
   }, [events.data]);
+
+  // The celebration starts once the chain shows the run as paid and lasts 1.25s.
+  const celebrateStatus = runs.find((r) => r.runKey === celebrate)?.status;
+  useEffect(() => {
+    if (!celebrate || celebrateStatus !== "Executed") return;
+    const t = setTimeout(() => setCelebrate(null), reduce ? 0 : 1250);
+    return () => clearTimeout(t);
+  }, [celebrate, celebrateStatus, reduce]);
 
   if (!v.isConnected) return <p className="pt-10 text-[16px] text-muted-foreground">Connect your wallet to see runs.</p>;
   if (v.loading || events.isLoading || (keys.length > 0 && details.isLoading)) return <RunsSkeleton />;
@@ -165,10 +233,21 @@ export default function RunsPage() {
             const paidTx = r.events.find((e) => e.name === "RunExecuted");
             const cancelTx = r.events.find((e) => e.name === "RunCancelled");
             const count = r.payeeIds.length;
+            const celebrating = celebrate === r.runKey;
+            const slips = r.payeeIds.map((id, i) => ({
+              name: names.get(id) ?? shortHash(id),
+              role: TOKEN_SYMBOL,
+              wallet: wallets.get(id) ?? id,
+              amount: formatAmount(r.amounts[i]),
+              tx: paidTx ? shortHash(paidTx.txHash) : undefined,
+            }));
+            const start = proposed?.timestamp ?? 0;
 
             return (
-              <li
+              <motion.li
                 key={r.runKey}
+                layout="position"
+                transition={{ duration: 0.25, ease: "easeOut" }}
                 className={cn("border px-4", isOpen ? "rounded-2xl border-[var(--gold)]/50 bg-card" : "rounded-none border-transparent border-b-border")}
               >
                 <button
@@ -188,17 +267,20 @@ export default function RunsPage() {
                   <span className="tnum font-serif text-[18px]">
                     {formatAmount(r.total)} <span className="text-[13px] text-muted-foreground">{TOKEN_SYMBOL}</span>
                   </span>
-                  <StatusChip kind={refused ? "refused" : chip.kind}>{refused ? "REFUSED" : chip.text}</StatusChip>
+                  <StatusChip kind={refused ? "refused" : celebrating ? "signed" : chip.kind}>{refused ? "REFUSED" : celebrating ? "SIGNED" : chip.text}</StatusChip>
                 </button>
 
+                <AnimatePresence initial={false}>
                 {isOpen && (
+                  <motion.div
+                    className="overflow-hidden"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                  >
                   <div className="grid gap-6 pb-6 md:grid-cols-2">
-                    {refused && (
-                      <section role="alert" className="rounded-2xl border border-[var(--refused)]/60 bg-[var(--refused)]/10 p-5 md:col-span-2">
-                        <h2 className="text-[22px] text-[var(--refused)]">Refused by the contract</h2>
-                        <p className="mt-2 text-[16px]">{refusal}</p>
-                      </section>
-                    )}
+                    {refused && <RefusalCard runKey={r.runKey} reason={refusal!} />}
 
                     {r.status === "Cancelled" && (
                       <section className="rounded-2xl border border-[var(--refused)]/40 p-5 md:col-span-2">
@@ -257,7 +339,7 @@ export default function RunsPage() {
                     <section aria-label="Actions" className="flex flex-wrap items-start gap-3 self-start">
                       {r.status === "Executed" && (
                         <div className="grid gap-1">
-                          <SignatureMark name={v.address ? shortAddress(v.address) : "Signed"} className="text-[44px] text-[var(--forest-900)] dark:text-[var(--gold)]" />
+                          <SignatureMark name={v.address ? shortAddress(v.address) : "Signed"} className="text-[56px] text-[var(--forest-900)] dark:text-[var(--gold)]" />
                           <p className="font-mono text-[11px] text-muted-foreground">
                             Signed and paid · {formatAmount(r.total)} {TOKEN_SYMBOL}
                           </p>
@@ -266,41 +348,60 @@ export default function RunsPage() {
                               {shortHash(paidTx.txHash)}
                             </a>
                           )}
+                          <AnimatePresence>
+                            {celebrating && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden"
+                              >
+                                <PaidCelebration slips={slips} />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       )}
                       {r.status === "Proposed" && (
                         <>
-                          <Button className="rounded-full" disabled={refused} onClick={() => tx("Approve run", { address: vault, abi: payrollVaultAbi, functionName: "approveRun", args: [r.runKey] })}>
+                          <ActionButton pending={pending === `${r.runKey}:approve`} busyLabel="Approving…" disabled={refused || !!pending} onClick={() => act(`${r.runKey}:approve`, "Approve run", { address: vault, abi: payrollVaultAbi, functionName: "approveRun", args: [r.runKey] })}>
                             Approve
-                          </Button>
-                          <Button variant="outline" className="rounded-full" onClick={() => tx("Cancel run", { address: vault, abi: payrollVaultAbi, functionName: "cancelRun", args: [r.runKey] })}>
+                          </ActionButton>
+                          <ActionButton pending={pending === `${r.runKey}:cancel`} busyLabel="Cancelling…" variant="outline" disabled={!!pending} onClick={() => act(`${r.runKey}:cancel`, "Cancel run", { address: vault, abi: payrollVaultAbi, functionName: "cancelRun", args: [r.runKey] })}>
                             Cancel
-                          </Button>
+                          </ActionButton>
                         </>
                       )}
                       {r.status === "Approved" && (
                         <>
-                          <Button
-                            className="rounded-full"
-                            disabled={now === 0 || now < r.executableAt || refused}
-                            onClick={() => tx("Sign and pay", { address: vault, abi: payrollVaultAbi, functionName: "executeRun", args: [r.runKey] })}
+                          <ActionButton
+                            pending={pending === `${r.runKey}:pay`}
+                            busyLabel="Signing and paying…"
+                            disabled={now === 0 || now < r.executableAt || refused || !!pending}
+                            onClick={() => signAndPay(r.runKey, { address: vault, abi: payrollVaultAbi, functionName: "executeRun", args: [r.runKey] })}
                           >
                             Sign and pay
-                          </Button>
-                          <Button variant="outline" className="rounded-full" onClick={() => tx("Cancel run", { address: vault, abi: payrollVaultAbi, functionName: "cancelRun", args: [r.runKey] })}>
+                          </ActionButton>
+                          <ActionButton pending={pending === `${r.runKey}:cancel`} busyLabel="Cancelling…" variant="outline" disabled={!!pending} onClick={() => act(`${r.runKey}:cancel`, "Cancel run", { address: vault, abi: payrollVaultAbi, functionName: "cancelRun", args: [r.runKey] })}>
                             Cancel
-                          </Button>
+                          </ActionButton>
                         </>
                       )}
                       {live && now > 0 && (
-                        <p className="meta w-full text-muted-foreground">
-                          {now < r.executableAt ? `Review window: ${formatDuration(r.executableAt - now)} left` : "Review window closed"}
-                        </p>
+                        <div className="flex w-full items-center gap-3 text-muted-foreground">
+                          <ReviewRing now={now} start={start} end={r.executableAt} className="text-foreground" />
+                          <p className="meta">
+                            {now < r.executableAt ? `Review window: ${formatDuration(r.executableAt - now)} left` : "Review window closed"}
+                          </p>
+                        </div>
                       )}
                     </section>
                   </div>
+                  </motion.div>
                 )}
-              </li>
+                </AnimatePresence>
+              </motion.li>
             );
           })}
         </ul>

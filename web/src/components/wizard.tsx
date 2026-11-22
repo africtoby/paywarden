@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ParticleSeal } from "@/components/landing/particle-seal";
 import { isAddress, zeroAddress, type Address } from "viem";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +38,24 @@ export function Wizard() {
   const tx = useTx();
   const step = wizardStep(v);
   const [busy, setBusy] = useState(false);
+  const prevStep = useRef(step);
+  const [dir, setDir] = useState(1);
+  const [opened, setOpened] = useState(false);
+
+  useEffect(() => {
+    if (step === prevStep.current) return;
+    const forward = step > prevStep.current;
+    setDir(forward ? 1 : -1);
+    // Finishing setup while this page is open: the seal assembles once.
+    if (forward && step === 3) setOpened(true);
+    prevStep.current = step;
+  }, [step]);
+
+  useEffect(() => {
+    if (!opened) return;
+    const t = setTimeout(() => setOpened(false), 3200);
+    return () => clearTimeout(t);
+  }, [opened]);
 
   const [windowMin, setWindowMin] = useState("60");
   const [deposit, setDeposit] = useState("");
@@ -89,7 +109,27 @@ export function Wizard() {
   };
 
   if (!v.isConnected) return null;
-  if (step === 3) return null;
+  if (step === 3) {
+    return (
+      <AnimatePresence>
+        {opened && (
+          <motion.section
+            aria-live="polite"
+            className="panel-dark overflow-hidden rounded-2xl border border-border text-center"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            <div className="flex flex-col items-center gap-2 p-6">
+              <ParticleSeal tilt={false} className="size-[180px]" />
+              <p className="font-serif text-[28px]">Your vault is open</p>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+    );
+  }
 
   return (
     <section aria-labelledby="wizard-title" className="rounded-2xl border border-border bg-card p-6 md:p-8">
@@ -103,14 +143,33 @@ export function Wizard() {
           <li
             key={s}
             aria-current={i === step ? "step" : undefined}
-            className={cn("flex-1 border-t-2 pt-2 text-[12px]", i <= step ? "border-foreground text-foreground" : "border-border text-muted-foreground")}
+            className={cn("relative flex-1 border-t-2 border-border pt-2 text-[12px]", i <= step ? "text-foreground" : "text-muted-foreground")}
           >
+            {i === step && (
+              <motion.span
+                layoutId="wizard-marker"
+                aria-hidden
+                className="absolute -top-0.5 left-0 h-0.5 w-full bg-foreground"
+                transition={{ type: "spring", stiffness: 420, damping: 36 }}
+              />
+            )}
+            {i < step && <span aria-hidden className="absolute -top-0.5 left-0 h-0.5 w-full bg-foreground/60" />}
             {s}
           </li>
         ))}
       </ol>
 
-      <div className="mt-6 grid max-w-md gap-5">
+      <AnimatePresence mode="wait" initial={false} custom={dir}>
+      <motion.div
+        key={step}
+        custom={dir}
+        variants={{ in: (d: number) => ({ opacity: 0, x: 24 * d }), on: { opacity: 1, x: 0 }, out: (d: number) => ({ opacity: 0, x: -24 * d }) }}
+        initial="in"
+        animate="on"
+        exit="out"
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="mt-6 grid max-w-md gap-5"
+      >
         {step === 0 && (
           <>
             <p className="text-[14px] text-muted-foreground">
@@ -169,7 +228,8 @@ export function Wizard() {
             </Button>
           </>
         )}
-      </div>
+      </motion.div>
+      </AnimatePresence>
     </section>
   );
 }

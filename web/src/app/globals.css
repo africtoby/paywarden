@@ -214,3 +214,64 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Skeleton: a soft gold sheen sweeps across instead of a grey pulse. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--gold) 34%, transparent) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: pw-sheen 1.8s ease-in-out infinite;
+}
+@keyframes pw-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Toasts in brand: forest with a gold hairline, refused red on errors, a thin gold line while pending. */
+html body [data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: var(--forest-900);
+  --normal-text: var(--mist);
+  --normal-border: color-mix(in srgb, var(--gold) 38%, transparent);
+  --success-bg: var(--forest-900);
+  --success-text: var(--mist);
+  --success-border: color-mix(in srgb, var(--gold) 60%, transparent);
+  --error-bg: #2b0f17;
+  --error-text: #ee8fa1;
+  --error-border: color-mix(in srgb, #ee8fa1 55%, transparent);
+  --warning-bg: var(--forest-900);
+  --warning-text: var(--gold);
+  --warning-border: color-mix(in srgb, var(--gold) 50%, transparent);
+  font-family: var(--font-figtree), sans-serif;
+}
+html body [data-sonner-toaster] [data-sonner-toast] {
+  border-radius: 16px;
+  overflow: hidden;
+}
+html body [data-sonner-toaster] [data-sonner-toast][data-type="loading"] {
+  background-image: linear-gradient(90deg, transparent, var(--gold), transparent);
+  background-repeat: no-repeat;
+  background-size: 40% 2px;
+  background-position: -40% 100%;
+  animation: pw-toast-line 1.4s linear infinite;
+}
+@keyframes pw-toast-line {
+  to {
+    background-position: 140% 100%;
+  }
+}
+html body [data-sonner-toaster] [data-sonner-toast] [data-button] {
+  background: var(--gold);
+  color: var(--forest-950);
+  border-radius: 999px;
+}
+html body [data-sonner-toaster] [data-sonner-toast] [data-description] {
+  color: inherit;
+  opacity: 0.78;
+}

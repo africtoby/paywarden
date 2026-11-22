@@ -1,3 +1,6 @@
+"use client";
+
+import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export type ChipKind = "awaiting" | "signed" | "refused" | "idle";
@@ -9,7 +12,21 @@ const STYLE: Record<ChipKind, string> = {
   idle: "bg-muted text-muted-foreground",
 };
 
-/** Run status pill: AWAITING in amber, SIGNED in green, REFUSED in red. */
+/** Run status pill: AWAITING in amber, SIGNED and PAID in green, REFUSED in red. Colour and text cross-fade when it changes. */
 export function StatusChip({ kind, children, className }: { kind: ChipKind; children: React.ReactNode; className?: string }) {
-  return <span className={cn("meta inline-block rounded-full px-3 py-1", STYLE[kind], className)}>{children}</span>;
+  return (
+    <span className={cn("meta inline-grid rounded-full px-3 py-1 transition-colors duration-300", STYLE[kind], className)}>
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={typeof children === "string" ? children : kind}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {children}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
 }

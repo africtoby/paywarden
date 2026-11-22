@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 import type { Address, Hex } from "viem";
 import { Seal } from "@/components/seal";
@@ -13,6 +15,7 @@ import { payrollVaultAbi } from "@/lib/contracts";
 import { addressUrl } from "@/lib/chain";
 import { shortAddress } from "@/lib/format";
 import { inviteLink, payeeId, randomSalt } from "@/lib/payee";
+import { useFreshKeys } from "@/lib/use-fresh";
 import { useVaultEvents } from "@/lib/use-logs";
 import { useTx } from "@/lib/use-tx";
 import { useVault } from "@/lib/use-vault";
@@ -36,8 +39,8 @@ export default function PayeesPage() {
   const [name, setName] = useState("");
   const [invites, setInvites] = useState<Invite[]>([]);
   const [busy, setBusy] = useState(false);
-  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
-  const seen = useRef<Set<string> | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     const vault = v.vault;
@@ -54,15 +57,8 @@ export default function PayeesPage() {
   }, [events.data]);
 
   // A seal only draws in when a payee confirms while this page is open; on load they are already drawn.
-  useEffect(() => {
-    if (events.isLoading) return;
-    const ids = new Set(confirmed.keys());
-    const before = seen.current;
-    seen.current = ids;
-    if (!before) return;
-    const added = [...ids].filter((id) => !before.has(id));
-    if (added.length) queueMicrotask(() => setFresh((f) => new Set([...f, ...added])));
-  }, [confirmed, events.isLoading]);
+  const confirmedIds = useMemo(() => [...confirmed.keys()], [confirmed]);
+  const fresh = useFreshKeys(confirmedIds, events.isLoading, 2500);
 
   const invite = async () => {
     if (!v.vault || !name.trim()) return;
@@ -86,6 +82,8 @@ export default function PayeesPage() {
     const link = inviteLink(window.location.origin, v.vault!, i.name, i.salt);
     try {
       await navigator.clipboard.writeText(link);
+      setCopied(i.id);
+      setTimeout(() => setCopied((c) => (c === i.id ? null : c)), 2000);
       toast.success("Copied", { description: `Send ${i.name} the invite link.` });
     } catch {
       toast.error("Could not copy. Select the link and copy it by hand.", { description: link });
@@ -142,30 +140,65 @@ export default function PayeesPage() {
           <p className="mt-3 text-[14px] text-muted-foreground">No one yet. Invite your first payee above.</p>
         ) : (
           <ul className="mt-3 divide-y divide-border border-y border-border">
-            {invites.map((i) => {
-              const wallet = confirmed.get(i.id);
-              return (
-                <li key={i.id} className="flex min-h-[73px] flex-wrap items-center gap-x-4 gap-y-2 py-4">
-                  <Seal key={fresh.has(i.id) ? "fresh" : "static"} address={wallet} size={40} animate={fresh.has(i.id)} className="shrink-0 text-[var(--forest-900)] dark:text-[var(--mist)]" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-serif text-[18px]">{i.name}</p>
-                    {wallet ? (
-                      <a href={addressUrl(wallet)} target="_blank" rel="noreferrer" className="font-mono text-[12px] text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
-                        {shortAddress(wallet)}
-                      </a>
-                    ) : (
-                      <p className="text-[12px] text-muted-foreground">Not a confirmed payee</p>
+            <AnimatePresence initial={false}>
+              {invites.map((i) => {
+                const wallet = confirmed.get(i.id);
+                return (
+                  <motion.li
+                    key={i.id}
+                    layout="position"
+                    initial={{ opacity: 0, y: -12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    className="relative flex min-h-[73px] flex-wrap items-center gap-x-4 gap-y-2 py-4"
+                  >
+                    {fresh.has(i.id) && !reduce && (
+                      <motion.span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0 bg-[var(--gold)]"
+                        initial={{ opacity: 0.3 }}
+                        animate={{ opacity: 0 }}
+                        transition={{ duration: 1.5, ease: "easeOut" }}
+                      />
                     )}
-                  </div>
-                  <StatusChip kind={wallet ? "signed" : "awaiting"}>{wallet ? "Confirmed" : "Invited"}</StatusChip>
-                  {!wallet && (
-                    <Button variant="outline" size="sm" className="rounded-full" onClick={() => copy(i)}>
-                      Copy invite link
-                    </Button>
-                  )}
-                </li>
-              );
-            })}
+                    <Seal address={wallet} size={40} animate={fresh.has(i.id)} breathe className="shrink-0 text-[var(--forest-900)] dark:text-[var(--mist)]" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-serif text-[18px]">{i.name}</p>
+                      {wallet ? (
+                        <a href={addressUrl(wallet)} target="_blank" rel="noreferrer" className="font-mono text-[12px] text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
+                          {shortAddress(wallet)}
+                        </a>
+                      ) : (
+                        <p className="text-[12px] text-muted-foreground">Not a confirmed payee</p>
+                      )}
+                    </div>
+                    <StatusChip kind={wallet ? "signed" : "awaiting"}>{wallet ? "Confirmed" : "Invited"}</StatusChip>
+                    {!wallet && (
+                      <Button variant="outline" size="sm" className="min-w-[148px] rounded-full" onClick={() => copy(i)}>
+                        <AnimatePresence mode="wait" initial={false}>
+                          <motion.span
+                            key={copied === i.id ? "done" : "idle"}
+                            className="inline-flex items-center gap-1.5"
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            transition={{ duration: 0.15 }}
+                          >
+                            {copied === i.id ? (
+                              <>
+                                <Check className="size-3.5" aria-hidden /> Copied
+                              </>
+                            ) : (
+                              "Copy invite link"
+                            )}
+                          </motion.span>
+                        </AnimatePresence>
+                      </Button>
+                    )}
+                  </motion.li>
+                );
+              })}
+            </AnimatePresence>
           </ul>
         )}
       </section>

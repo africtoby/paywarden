@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 import { Halftone } from "@/components/landing/halftone";
 import { WalletButton } from "@/components/wallet-button";
 import { useTheme } from "next-themes";
@@ -31,6 +32,18 @@ function ThemeToggle() {
   );
 }
 
+/** The one shared pill behind the active nav item. It slides to the next item (layoutId). */
+function Pill({ id, className }: { id: string; className: string }) {
+  return (
+    <motion.span
+      layoutId={id}
+      aria-hidden
+      className={cn("absolute inset-0 border border-gold/50 bg-sidebar-primary", className)}
+      transition={{ type: "spring", stiffness: 520, damping: 40 }}
+    />
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const active = (href: string) => (href === "/app" ? path === "/app" : path.startsWith(href));
@@ -47,13 +60,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               key={href}
               href={href}
               aria-current={active(href) ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-3 rounded-full border border-transparent px-4 py-2.5 text-[14px] text-foreground/75 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2",
-                active(href) && "border-gold/50 bg-sidebar-primary text-sidebar-primary-foreground hover:text-sidebar-primary-foreground",
-              )}
+              className="relative flex items-center gap-3 rounded-full border border-transparent px-4 py-2.5 text-[14px] text-foreground/75 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 aria-[current=page]:text-sidebar-primary-foreground aria-[current=page]:hover:text-sidebar-primary-foreground"
             >
-              <Icon className="size-4" aria-hidden />
-              {label}
+              {active(href) && <Pill id="nav-pill-desktop" className="rounded-full" />}
+              <Icon className="relative size-4" aria-hidden />
+              <span className="relative">{label}</span>
             </Link>
           ))}
         </nav>
@@ -71,7 +82,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <WalletButton showAccount size="default" />
           </div>
         </header>
-        <main className="w-full max-w-[1120px] flex-1 px-5 pb-10 md:px-10">{children}</main>
+        <motion.main
+          key={path}
+          className="w-full max-w-[1120px] flex-1 px-5 pb-10 md:px-10"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+        >
+          {children}
+        </motion.main>
       </div>
 
       <nav
@@ -83,13 +102,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             key={href}
             href={href}
             aria-current={active(href) ? "page" : undefined}
-            className={cn(
-              "m-1 flex flex-col items-center gap-1 rounded-2xl border border-transparent py-1.5 text-[11px] text-foreground/70 focus-visible:outline-2 focus-visible:-outline-offset-2",
-              active(href) && "border-gold/50 bg-sidebar-primary text-sidebar-primary-foreground",
-            )}
+            className="relative m-1 flex flex-col items-center gap-1 rounded-2xl border border-transparent py-1.5 text-[11px] text-foreground/70 focus-visible:outline-2 focus-visible:-outline-offset-2 aria-[current=page]:text-sidebar-primary-foreground"
           >
-            <Icon className="size-5" aria-hidden />
-            {label}
+            {active(href) && <Pill id="nav-pill-mobile" className="rounded-2xl" />}
+            <Icon className="relative size-5" aria-hidden />
+            <span className="relative">{label}</span>
           </Link>
         ))}
       </nav>

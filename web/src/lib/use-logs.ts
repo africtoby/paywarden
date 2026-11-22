@@ -15,7 +15,42 @@ export type VaultEvent = {
   timestamp: number;
 };
 
-const CHUNK = 50_000n;
+// The Aevum RPC refuses getLogs over 1,000 blocks, so the fallback walks forward in windows of that size.
+const CHUNK = 1_000n;
+const PARALLEL = 8;
+
+const created = new Map<string, bigint>();
+
+/** First block where the contract has code, by bisection (needs a node that serves old state). Remembered per vault. */
+async function creationBlock(client: NonNullable<ReturnType<typeof usePublicClient>>, vault: Address, latest: bigint): Promise<bigint> {
+  const key = `paywarden:created:${vault.toLowerCase()}`;
+  const known = created.get(vault);
+  if (known !== undefined) return known;
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      created.set(vault, BigInt(saved));
+      return BigInt(saved);
+    }
+  } catch {
+    /* no storage: bisect again next time */
+  }
+  let lo = 0n;
+  let hi = latest;
+  while (lo < hi) {
+    const mid = (lo + hi) / 2n;
+    const code = await client.getCode({ address: vault, blockNumber: mid });
+    if (code && code !== "0x") hi = mid;
+    else lo = mid + 1n;
+  }
+  created.set(vault, lo);
+  try {
+    localStorage.setItem(key, lo.toString());
+  } catch {
+    /* ignore */
+  }
+  return lo;
+}
 
 /** All events emitted by a vault and its policy, oldest first, decoded and timestamped. */
 export function useVaultEvents(vault?: Address, policy?: Address) {
@@ -34,14 +69,15 @@ export function useVaultEvents(vault?: Address, policy?: Address) {
       try {
         logs = await client!.getLogs({ address, fromBlock: 0n, toBlock: latest });
       } catch {
-        for (let from = latest; from >= 0n; from -= CHUNK) {
-          const start = from >= CHUNK ? from - CHUNK + 1n : 0n;
-          const part = await client!.getLogs({ address, fromBlock: start, toBlock: from });
-          logs = [...part, ...logs];
-          if (start === 0n) break;
+        const first = await creationBlock(client!, vault!, latest);
+        const windows: [bigint, bigint][] = [];
+        for (let from = first; from <= latest; from += CHUNK) windows.push([from, from + CHUNK - 1n < latest ? from + CHUNK - 1n : latest]);
+        logs = [];
+        for (let i = 0; i < windows.length; i += PARALLEL) {
+          const parts = await Promise.all(windows.slice(i, i + PARALLEL).map(([f, t]) => client!.getLogs({ address, fromBlock: f, toBlock: t })));
+          logs = [...logs, ...parts.flat()];
         }
       }
-
       const decoded = logs.flatMap((l) => {
         for (const abi of [payrollVaultAbi, agentSpendPolicyAbi]) {
           try {
