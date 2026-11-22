@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import { Halftone } from "@/components/landing/halftone";
+import { ParticleSeal } from "@/components/landing/particle-seal";
+import { RevealHeading } from "@/components/landing/reveal-heading";
+import { Magnetic } from "@/components/landing/magnetic";
+import { PayslipFan } from "@/components/landing/payslip-fan";
 import { HeroDemo } from "@/components/landing/hero-demo";
 import { TrickDemo } from "@/components/landing/trick-demo";
 import { HowPanels } from "@/components/landing/how-panels";
@@ -19,7 +22,7 @@ export default function Landing() {
     <div className="bg-[var(--paper)] text-[var(--ink)]">
       {/* Hero */}
       <section className="relative overflow-hidden bg-[var(--forest-950)] text-[var(--mist)]">
-        <Halftone className="absolute -right-[14%] -top-[18%] size-[min(980px,95vw)] opacity-[0.22]" />
+        <ParticleSeal className="absolute -right-[14%] -top-[18%] size-[min(980px,95vw)] opacity-70" />
         <div className="relative mx-auto max-w-[1200px] px-5 pb-20 pt-6 md:px-10 md:pb-28">
           <header className="flex items-center justify-between">
             <span className="font-serif text-[22px]">PayWarden</span>
@@ -34,17 +37,19 @@ export default function Landing() {
 
           <div className="mt-20 grid gap-14 lg:mt-24 lg:grid-cols-[1fr_minmax(0,560px)] lg:items-center">
             <div>
-              <h1 className="text-[clamp(48px,7.2vw,88px)] leading-[0.98] tracking-[-0.03em] [text-wrap:balance]">
+              <RevealHeading as="h1" className="text-[clamp(48px,7.2vw,88px)] leading-[0.98] tracking-[-0.03em] [text-wrap:balance]">
                 Payroll your AI prepares.{" "}
                 <em className="font-light text-[var(--gold)]">Only you can sign.</em>
-              </h1>
+              </RevealHeading>
               <p className="mt-7 max-w-[34rem] text-[18px] leading-relaxed text-[var(--mist)]/72">
                 An assistant drafts each pay run in tUSD8. A contract on Aevum checks it against limits you set. Nothing moves until you sign.
               </p>
               <div className="mt-9 flex flex-wrap items-center gap-5">
-                <Link href="/app" className={buttonVariants({ className: goldCta })}>
-                  <span>Launch app</span>
-                </Link>
+                <Magnetic>
+                  <Link href="/app" className={buttonVariants({ className: goldCta })}>
+                    <span>Launch app</span>
+                  </Link>
+                </Magnetic>
                 <a href="#trick" className="text-[15px] text-[var(--mist)]/75 underline decoration-[var(--mist)]/25 underline-offset-[6px] transition-colors hover:text-[var(--mist)] hover:decoration-[var(--gold)]">
                   Watch it refuse a bad draft
                 </a>
@@ -58,9 +63,9 @@ export default function Landing() {
       {/* How it works */}
       <section className="mx-auto max-w-[1200px] px-5 py-24 md:px-10 md:py-32" aria-labelledby="how">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <h2 id="how" className="max-w-xl text-[clamp(34px,4vw,48px)] leading-[1.05] tracking-[-0.02em]">
+          <RevealHeading id="how" className="max-w-xl text-[clamp(34px,4vw,48px)] leading-[1.05] tracking-[-0.02em]">
             Three moves, and only one of them is yours.
-          </h2>
+          </RevealHeading>
           <p className="max-w-sm text-[16px] text-[var(--ink)]/60">Payees vouch for their wallets. The assistant does the paperwork. You keep the pen.</p>
         </div>
         <div className="mt-12">
@@ -69,12 +74,12 @@ export default function Landing() {
       </section>
 
       {/* Try to trick it */}
-      <section id="trick" className="scroll-mt-6 bg-[var(--forest-900)] text-[var(--mist)]" aria-labelledby="trick-h">
+      <section id="trick" className="scroll-mt-6 overflow-hidden bg-[var(--forest-900)] text-[var(--mist)]" aria-labelledby="trick-h">
         <div className="mx-auto max-w-[1200px] px-5 py-24 md:px-10 md:py-32">
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-end">
-            <h2 id="trick-h" className="text-[clamp(34px,4vw,48px)] leading-[1.05] tracking-[-0.02em]">
+            <RevealHeading id="trick-h" className="text-[clamp(34px,4vw,48px)] leading-[1.05] tracking-[-0.02em]">
               Try to trick it. <em className="font-light text-[var(--gold)]">The contract won&apos;t budge.</em>
-            </h2>
+            </RevealHeading>
             <p className="max-w-md text-[16px] text-[var(--mist)]/70 lg:justify-self-end">
               Seven rules live on-chain: confirmed payees, per-person, per-run and monthly caps, expiry, pause and no double pay. Even a fooled assistant can&apos;t get past them.
             </p>
@@ -85,9 +90,11 @@ export default function Landing() {
         </div>
       </section>
 
+      <PayslipFan />
+
       {/* One payday */}
       <section className="mx-auto max-w-[1200px] px-5 py-24 md:px-10 md:py-32" aria-labelledby="day">
-        <h2 id="day" className="text-[clamp(34px,4vw,48px)] leading-[1.05] tracking-[-0.02em]">One payday, start to finish</h2>
+        <RevealHeading id="day" className="text-[clamp(34px,4vw,48px)] leading-[1.05] tracking-[-0.02em]">One payday, start to finish</RevealHeading>
         <PaydayTimeline />
       </section>
 

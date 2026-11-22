@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { RotateCcw } from "lucide-react";
 import { Seal } from "@/components/seal";
 import { SignatureMark } from "@/components/signature-mark";
 import { CHECK_LABELS } from "@/lib/demo-rules";
+import { CornerMarks } from "./corner-marks";
+import { PAID_EVENT } from "./particle-seal";
 
 const LINES = [
   { name: "Ada Okonkwo", role: "Product design, 40 h", wallet: "0x7a3f91c2d0e4b8a6f1c35e7d9b2a4c6e8f0a91c2", amount: "600.00" },
@@ -26,7 +28,13 @@ export function HeroDemo() {
   const [run, setRun] = useState(0);
   const timers = useRef<number[]>([]);
   // With reduced motion the finished run is shown straight away.
-  const phase: Phase = reduce ? "paid" : played;
+  // Switched on after mount so the server and first client render match.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+  const phase: Phase = reduce && mounted ? "paid" : played;
 
   const play = useCallback(() => {
     timers.current.forEach(clearTimeout);
@@ -49,12 +57,19 @@ export function HeroDemo() {
     return () => pending.forEach(clearTimeout);
   }, [reduce, play, run]);
 
+  // Tell the hero seal to pulse once when the run is paid.
+  const paid = played === "paid";
+  useEffect(() => {
+    if (paid) window.dispatchEvent(new Event(PAID_EVENT));
+  }, [paid, run]);
+
   const status = reached(phase, "paid") ? "PAID" : reached(phase, "sign") ? "SIGNED" : reached(phase, "checks") ? "AWAITING" : "DRAFTING";
   const statusCls =
     status === "PAID" || status === "SIGNED" ? "text-[#7fbf9a] bg-[#7fbf9a]/12" : status === "AWAITING" ? "text-[var(--amber)] bg-[var(--amber)]/12" : "text-[var(--sage)] bg-[var(--mist)]/8";
 
   return (
     <figure className="relative rounded-[28px] border border-[var(--mist)]/10 bg-[var(--forest-900)] p-2" aria-label="Example pay run, animated">
+      <CornerMarks />
       <div className="rounded-[22px] border border-[var(--mist)]/10 bg-[var(--forest-950)]">
         <div className="flex items-center justify-between gap-4 border-b border-[var(--mist)]/10 px-5 py-3">
           <span className="font-serif text-[15px] text-[var(--mist)]">November payroll</span>
@@ -118,7 +133,7 @@ export function HeroDemo() {
               })}
             </ul>
 
-            <div className="mt-5 min-h-[92px] flex-1 rounded-2xl border border-dashed border-[var(--mist)]/15 p-4">
+            <div className="mt-5 min-h-[132px] flex-1 rounded-2xl border border-dashed border-[var(--mist)]/15 p-4">
               <AnimatePresence mode="wait">
                 {phase === "review" && (
                   <motion.div key="review" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -129,7 +144,7 @@ export function HeroDemo() {
                 {reached(phase, "sign") && (
                   <motion.div key="signed" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <p className="text-[12px] text-[var(--sage)]">Signed by the employer</p>
-                    <SignatureMark key={run} name="Ama Mensah" animate={!reduce} className="mt-1 text-[40px] text-[var(--gold)]" />
+                    <SignatureMark key={run} name="Ama Mensah" animate={!reduce} className="mt-1 text-[52px] text-[var(--gold)]" />
                     <motion.p
                       initial={false}
                       animate={{ opacity: reached(phase, "paid") ? 1 : 0 }}

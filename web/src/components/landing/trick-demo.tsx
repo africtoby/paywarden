@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { evaluateDraft, type DemoLine, type DemoPolicy } from "@/lib/demo-rules";
 import { formatAmount } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { RippleField, type RippleHandle } from "./ripple-field";
 
 const ADA = "0x7a3f91c2d0e4b8a6f1c35e7d9b2a4c6e8f0a91c2";
 const KEMI = "0x51be7c09a3d2f4e6b8c1a0d3e5f7b9c2d4e604d2";
@@ -40,13 +41,27 @@ export function TrickDemo() {
   const refused = result.refusal !== null;
   const lastCheckDelay = reduce ? 0 : 0.35 + 7 * 0.12;
 
+  // When the verdict lands, send a ripple out from the verdict card.
+  const ripple = useRef<RippleHandle>(null);
+  const verdict = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!drafted || reduce) return;
+    const id = window.setTimeout(() => {
+      const r = verdict.current?.getBoundingClientRect();
+      if (r) ripple.current?.fire(r.left + r.width / 2, r.top + r.height / 2, refused ? "refuse" : "pass");
+    }, lastCheckDelay * 1000);
+    return () => window.clearTimeout(id);
+  }, [drafted, refused, reduce, lastCheckDelay, sheet]);
+
   const pick = (s: Sheet) => {
     setSheet(s);
     setDrafted(false);
   };
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
+    <div className="relative">
+    <RippleField ref={ripple} className="absolute -left-[50vw] -top-16 h-[calc(100%+8rem)] w-[calc(100%+100vw)]" />
+    <div className="relative grid gap-5 lg:grid-cols-2">
       {/* Timesheet */}
       <div className="rounded-[22px] bg-[var(--paper-2)] p-5 text-[var(--ink)]">
         <div role="tablist" aria-label="Choose a timesheet" className="inline-flex rounded-full bg-[var(--ink)]/6 p-1">
@@ -139,6 +154,7 @@ export function TrickDemo() {
                 initial={reduce ? false : { opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: lastCheckDelay }}
+                ref={verdict}
                 className={cn("mt-5 rounded-2xl p-4", refused ? "bg-[var(--refused)]/20" : "bg-[#7fbf9a]/10")}
               >
                 <p className={cn("font-serif text-[22px]", refused ? "text-[#f6b8c3]" : "text-[#a9dcbd]")}>
@@ -152,6 +168,7 @@ export function TrickDemo() {
           )}
         </AnimatePresence>
       </div>
+    </div>
     </div>
   );
 }
