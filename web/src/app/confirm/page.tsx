@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { WalletButton } from "@/components/wallet-button";
 import { isAddress, isHex, type Address, type Hex } from "viem";
 import { useAccount } from "wagmi";
 import { Seal } from "@/components/seal";
@@ -75,7 +75,7 @@ export default function ConfirmPage() {
                     Confirm with this wallet
                   </Button>
                 ) : (
-                  <ConnectButton label="Connect wallet to confirm" />
+                  <WalletButton label="Connect wallet to confirm" />
                 )}
               </div>
             </>

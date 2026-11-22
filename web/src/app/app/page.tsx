@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { WalletButton } from "@/components/wallet-button";
 import { zeroAddress } from "viem";
 import { AllowanceMeter } from "@/components/allowance-meter";
 import { Wizard, wizardStep } from "@/components/wizard";
@@ -32,7 +32,7 @@ export default function Overview() {
         <h1 className="text-[36px] leading-tight">Connect your wallet to open your vault.</h1>
         <p className="mt-3 text-[16px] text-muted-foreground">Use the wallet that owns the payroll. You stay in control of every payment.</p>
         <div className="mt-6">
-          <ConnectButton />
+          <WalletButton />
         </div>
       </div>
     );

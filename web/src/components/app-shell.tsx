@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { WalletButton } from "@/components/wallet-button";
 import { useTheme } from "next-themes";
 import { Activity, Bot, FileText, LayoutDashboard, Moon, Sun, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -66,7 +66,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
           <div className="ml-auto flex items-center gap-3">
             <ThemeToggle />
-            <ConnectButton accountStatus={{ smallScreen: "avatar", largeScreen: "address" }} chainStatus="icon" showBalance={false} />
+            <WalletButton showAccount size="default" />
           </div>
         </header>
         <main className="w-full max-w-[1120px] flex-1 px-5 pb-10 md:px-10">{children}</main>
