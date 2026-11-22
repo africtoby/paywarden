@@ -1,0 +1,3 @@
+memo: Week 12
+Ada Lovelace, 40, 25.50
+Grace Hopper, 32.5, 30
