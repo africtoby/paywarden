@@ -48,7 +48,7 @@ export default function ActivityPage() {
 
   return (
     <div className="pt-4">
-      <h1 className="text-[36px] leading-tight">Activity</h1>
+      <h1 className="page-title">Activity</h1>
       <p className="mt-2 text-[16px] text-muted-foreground">Everything that happened in your vault, straight from the chain.</p>
       {events.isError && <p role="alert" className="mt-4 text-[14px] text-[var(--refused)]">Could not load activity. Check your connection and reload.</p>}
       {list.length === 0 ? (

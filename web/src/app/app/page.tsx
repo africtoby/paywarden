@@ -4,6 +4,7 @@ import Link from "next/link";
 import { WalletButton } from "@/components/wallet-button";
 import { zeroAddress } from "viem";
 import { AllowanceMeter } from "@/components/allowance-meter";
+import { BalanceCard } from "@/components/balance-card";
 import { Wizard, wizardStep } from "@/components/wizard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -29,7 +30,7 @@ export default function Overview() {
   if (!v.isConnected) {
     return (
       <div className="max-w-xl pt-10">
-        <h1 className="text-[36px] leading-tight">Connect your wallet to open your vault.</h1>
+        <h1 className="page-title">Connect your wallet to <em>open your vault.</em></h1>
         <p className="mt-3 text-[16px] text-muted-foreground">Use the wallet that owns the payroll. You stay in control of every payment.</p>
         <div className="mt-6">
           <WalletButton />
@@ -53,25 +54,13 @@ export default function Overview() {
 
   return (
     <div className="grid gap-8 pt-4">
-      <section aria-labelledby="bal">
-        <p id="bal" className="meta text-muted-foreground">
-          Vault balance
-        </p>
-        <p className="tnum mt-1 font-serif text-[56px] font-light leading-none tracking-[-0.015em]">
-          {formatAmount(v.balance ?? 0n)} <span className="text-[22px] text-muted-foreground">{TOKEN_SYMBOL}</span>
-        </p>
-        {v.paused && (
-          <p role="status" className="mt-3 inline-block rounded-full bg-[var(--refused)]/10 px-3 py-1 text-[13px] text-[var(--refused)]">
-            Vault paused. Nothing can be paid until you unpause.
-          </p>
-        )}
-      </section>
+      <BalanceCard balance={v.balance ?? 0n} paused={v.paused} />
 
       <Wizard />
 
       {step === 3 && v.policy && v.vault && (
         <div className="grid gap-6 md:grid-cols-2">
-          <section aria-labelledby="allow" className="rounded-2xl border border-border bg-card p-6">
+          <section aria-labelledby="allow" className="panel-dark rounded-2xl border border-border p-6">
             <h2 id="allow" className="text-[22px]">
               Assistant allowance
             </h2>
@@ -84,7 +73,7 @@ export default function Overview() {
               <Row label="Period">{formatDuration(Number(v.policy.period))}</Row>
               <Row label="Status">{v.revoked ? "Revoked" : "Active"}</Row>
             </div>
-            <Link href="/app/assistant" className={buttonVariants({ variant: "outline", className: "mt-4 rounded-full" })}>
+            <Link href="/app/assistant" className={buttonVariants({ variant: "outline", className: "mt-4 rounded-full border-[var(--mist)]/30 bg-transparent text-[var(--mist)] hover:bg-[var(--mist)]/10 hover:text-[var(--mist)]" })}>
               Manage assistant
             </Link>
           </section>

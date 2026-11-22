@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Halftone } from "@/components/landing/halftone";
 import { WalletButton } from "@/components/wallet-button";
 import { useTheme } from "next-themes";
 import { Activity, Bot, FileText, LayoutDashboard, Moon, Sun, Users } from "lucide-react";
@@ -47,8 +48,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               href={href}
               aria-current={active(href) ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-full px-4 py-2.5 text-[14px] text-foreground/70 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2",
-                active(href) && "bg-accent text-foreground",
+                "flex items-center gap-3 rounded-full border border-transparent px-4 py-2.5 text-[14px] text-foreground/75 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2",
+                active(href) && "border-gold/50 bg-sidebar-primary text-sidebar-primary-foreground hover:text-sidebar-primary-foreground",
               )}
             >
               <Icon className="size-4" aria-hidden />
@@ -60,11 +61,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-col pb-20 md:pb-0">
-        <header className="flex items-center justify-between gap-3 px-5 py-4 md:px-10">
-          <Link href="/" className="font-serif text-[18px] md:hidden">
+        <header className="relative flex items-center justify-between gap-3 overflow-hidden px-5 py-4 md:px-10">
+          <Halftone tone="--halftone" parallax={false} className="absolute -right-16 top-1/2 size-[560px] -translate-y-1/2 opacity-[0.04]" />
+          <Link href="/" className="relative font-serif text-[18px] md:hidden">
             PayWarden
           </Link>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="relative ml-auto flex items-center gap-3">
             <ThemeToggle />
             <WalletButton showAccount size="default" />
           </div>
@@ -82,8 +84,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             href={href}
             aria-current={active(href) ? "page" : undefined}
             className={cn(
-              "flex flex-col items-center gap-1 py-2.5 text-[11px] text-foreground/60 focus-visible:outline-2 focus-visible:-outline-offset-2",
-              active(href) && "text-foreground",
+              "m-1 flex flex-col items-center gap-1 rounded-2xl border border-transparent py-1.5 text-[11px] text-foreground/70 focus-visible:outline-2 focus-visible:-outline-offset-2",
+              active(href) && "border-gold/50 bg-sidebar-primary text-sidebar-primary-foreground",
             )}
           >
             <Icon className="size-5" aria-hidden />

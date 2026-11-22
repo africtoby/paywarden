@@ -85,7 +85,9 @@ export default function PayeesPage() {
   return (
     <div className="grid gap-8 pt-4">
       <header>
-        <h1 className="text-[36px] leading-tight">Payees</h1>
+        <h1 className="page-title">
+          Who you <em>pay</em>
+        </h1>
         <p className="mt-2 max-w-xl text-[16px] text-muted-foreground">
           Invite someone by name. They confirm with their own wallet, so you never pay an address nobody has vouched for.
         </p>

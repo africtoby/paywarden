@@ -9,7 +9,19 @@ import { cn } from "@/lib/utils";
  * Engraved halftone backdrop: our guilloche rosette re-printed as a dot screen,
  * the way banknote engravings are reproduced. Drawn once per resize on canvas.
  */
-export function Halftone({ seed = "paywarden", className }: { seed?: string; className?: string }) {
+export function Halftone({
+  seed = "paywarden",
+  className,
+  parallax = true,
+  tone = "--gold",
+}: {
+  seed?: string;
+  className?: string;
+  /** Follow the pointer slightly. Off for the quiet app backdrops. */
+  parallax?: boolean;
+  /** CSS variable that colours the dots. */
+  tone?: string;
+}) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const reduce = useReducedMotion();
   const mx = useMotionValue(0);
@@ -45,9 +57,9 @@ export function Halftone({ seed = "paywarden", className }: { seed?: string; cla
       const px = s.getImageData(0, 0, S, S).data;
 
       // 2. Sample it on a dot grid: brighter source = bigger dot.
-      const gold = getComputedStyle(el).getPropertyValue("--gold").trim() || "#cdb97e";
+      const dot = getComputedStyle(el).getPropertyValue(tone).trim() || "#cdb97e";
       ctx.clearRect(0, 0, el.width, el.height);
-      ctx.fillStyle = gold;
+      ctx.fillStyle = dot;
       const step = 6 * dpr;
       const size = Math.min(el.width, el.height);
       const ox = (el.width - size) / 2;
@@ -69,17 +81,17 @@ export function Halftone({ seed = "paywarden", className }: { seed?: string; cla
     const ro = new ResizeObserver(draw);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [seed]);
+  }, [seed, tone]);
 
   useEffect(() => {
-    if (reduce) return;
+    if (reduce || !parallax) return;
     const move = (e: PointerEvent) => {
       mx.set((e.clientX / window.innerWidth - 0.5) * -12);
       my.set((e.clientY / window.innerHeight - 0.5) * -12);
     };
     window.addEventListener("pointermove", move, { passive: true });
     return () => window.removeEventListener("pointermove", move);
-  }, [reduce, mx, my]);
+  }, [reduce, parallax, mx, my]);
 
   return (
     <motion.div aria-hidden className={cn("pointer-events-none", className)} style={{ x, y }}>

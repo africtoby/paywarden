@@ -13,6 +13,7 @@ import { txUrl } from "@/lib/chain";
 import { formatAmount, formatDuration, shortHash } from "@/lib/format";
 import { useVaultEvents, type VaultEvent } from "@/lib/use-logs";
 import { useNow } from "@/lib/use-now";
+import { cn } from "@/lib/utils";
 import { useTx } from "@/lib/use-tx";
 import { useVault } from "@/lib/use-vault";
 
@@ -31,8 +32,8 @@ const time = (ts: number) =>
 
 const CHIP: Record<RunStatus, { text: string; cls: string }> = {
   None: { text: "UNKNOWN", cls: "" },
-  Proposed: { text: "AWAITING", cls: "bg-[var(--amber)]/15 text-[var(--amber)]" },
-  Approved: { text: "APPROVED", cls: "bg-[var(--amber)]/15 text-[var(--amber)]" },
+  Proposed: { text: "AWAITING", cls: "bg-[var(--amber)]/20 text-[var(--amber-ink)]" },
+  Approved: { text: "APPROVED", cls: "bg-[var(--amber)]/20 text-[var(--amber-ink)]" },
   Cancelled: { text: "REFUSED", cls: "bg-[var(--refused)]/15 text-[var(--refused)]" },
   Executed: { text: "SIGNED", cls: "bg-[var(--signed)]/15 text-[var(--signed)]" },
 };
@@ -102,21 +103,29 @@ export default function RunsPage() {
   const selected = runs.find((r) => r.runKey === open) ?? null;
 
   return (
-    <div className="agent-area -mx-5 min-h-[70vh] rounded-none px-5 py-8 md:mx-0 md:rounded-[24px] md:px-8">
-      <p className="meta text-[var(--sage)]">Runs</p>
-      <h1 className="mt-1 text-[36px] leading-tight">Your assistant drafts. You sign.</h1>
+    <div className="pt-4">
+      <p className="meta text-muted-foreground">Runs</p>
+      <h1 className="page-title mt-1">
+        Your assistant drafts. <em>You sign.</em>
+      </h1>
 
       {runs.length === 0 ? (
-        <p className="mt-6 max-w-md text-[16px] text-[var(--mist)]/70">
+        <p className="mt-6 max-w-md text-[16px] text-muted-foreground">
           No drafts yet. When your assistant prepares a payroll run it will wait here for your review.
         </p>
       ) : (
-        <ul className="mt-6 divide-y divide-[var(--mist)]/12 border-y border-[var(--mist)]/12">
+        <ul className="mt-6 grid gap-1">
           {runs.map((r) => {
             const chip = CHIP[r.status];
             const proposed = r.events.find((e) => e.name === "RunProposed");
             return (
-              <li key={r.runKey}>
+              <li
+                key={r.runKey}
+                className={cn(
+                  "border px-4",
+                  open === r.runKey ? "rounded-2xl border-gold/50 bg-card" : "rounded-none border-transparent border-b-border",
+                )}
+              >
                 <button
                   type="button"
                   onClick={() => setOpen(open === r.runKey ? null : r.runKey)}
@@ -127,23 +136,23 @@ export default function RunsPage() {
                     <p className="truncate font-serif text-[18px]">
                       Pay {r.payeeIds.length} {r.payeeIds.length === 1 ? "person" : "people"}
                     </p>
-                    <p className="meta mt-0.5 text-[var(--sage)]">
+                    <p className="meta mt-0.5 text-muted-foreground">
                       {proposed ? time(proposed.timestamp) : ""} · {shortHash(r.runKey)}
                     </p>
                   </div>
                   <span className="tnum font-serif text-[18px]">
-                    {formatAmount(r.total)} <span className="text-[13px] text-[var(--sage)]">{TOKEN_SYMBOL}</span>
+                    {formatAmount(r.total)} <span className="text-[13px] text-muted-foreground">{TOKEN_SYMBOL}</span>
                   </span>
                   <span className={`meta rounded-full px-3 py-1 ${chip.cls}`}>{chip.text}</span>
                 </button>
 
                 {selected?.runKey === r.runKey && (
                   <div className="grid gap-6 pb-6 md:grid-cols-2">
-                    <section aria-label="Draft" className="rounded-2xl border border-[var(--mist)]/12 bg-[var(--forest-900)] p-5">
+                    <section aria-label="Draft" className="panel-dark rounded-2xl border border-border p-5">
                       <p className="text-[16px]">
                         Pay {r.payeeIds.length} {r.payeeIds.length === 1 ? "person" : "people"}, {formatAmount(r.total)} {TOKEN_SYMBOL} in total.
                       </p>
-                      <ul className="mt-4 divide-y divide-[var(--mist)]/12">
+                      <ul className="mt-4 divide-y divide-border">
                         {r.payeeIds.map((id, i) => (
                           <li key={id} className="flex items-center gap-3 py-2.5">
                             <Seal address={wallets.get(id)} size={32} className="text-[var(--mist)]" />
@@ -159,7 +168,7 @@ export default function RunsPage() {
                       )}
                     </section>
 
-                    <section aria-label="Checks" className="rounded-2xl border border-[var(--mist)]/12 bg-[var(--forest-900)] p-5">
+                    <section aria-label="Checks" className="panel-dark rounded-2xl border border-border p-5">
                       <h2 className="text-[18px]">Checks the contract enforces</h2>
                       <ul className="mt-3">
                         {(() => {
@@ -178,7 +187,7 @@ export default function RunsPage() {
                       </ul>
                     </section>
 
-                    <section aria-label="Timeline" className="rounded-2xl border border-[var(--mist)]/12 p-5">
+                    <section aria-label="Timeline" className="panel-dark rounded-2xl border border-border p-5">
                       <ol className="grid gap-3">
                         {r.events
                           .filter((e) => ["RunProposed", "RunApproved", "RunCancelled", "RunExecuted"].includes(e.name))
@@ -197,7 +206,7 @@ export default function RunsPage() {
                       {r.status === "Executed" && (
                         <div>
                           <SignatureMark name="Approved" className="text-[44px] text-[var(--forest-900)] dark:text-[var(--gold)]" />
-                          <p className="font-mono text-[11px] text-[var(--sage)]">Signed and paid · {formatAmount(r.total)} {TOKEN_SYMBOL}</p>
+                          <p className="font-mono text-[11px] text-muted-foreground">Signed and paid · {formatAmount(r.total)} {TOKEN_SYMBOL}</p>
                         </div>
                       )}
                       {r.status === "Proposed" && (
@@ -219,7 +228,7 @@ export default function RunsPage() {
                           >
                             Sign and pay
                           </Button>
-                          <p className="meta self-center text-[var(--sage)]">
+                          <p className="meta self-center text-muted-foreground">
                             {now < r.executableAt ? `Review window: ${formatDuration(r.executableAt - now)} left` : "Review window closed"}
                           </p>
                         </>

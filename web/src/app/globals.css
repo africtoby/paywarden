@@ -67,8 +67,8 @@
   --forest-950: #072019;
   --forest-900: #0e3b2b;
   --ink: #0a2a1f;
-  --paper: #edf1ea;
-  --paper-2: #f5f7f3;
+  --paper: #edf2f1;
+  --paper-2: #f5f8f8;
   --mist: #e6ece4;
   --sage: #8da597;
   --gold: #cdb97e;
@@ -77,6 +77,7 @@
   --amber-ink: #8c5a0b;
   --signed: #1f6b47;
   --refused: #a3243b;
+  --halftone: var(--forest-900);
 
   --background: var(--paper);
   --foreground: var(--ink);
@@ -89,7 +90,7 @@
   --secondary: var(--mist);
   --secondary-foreground: var(--ink);
   --muted: var(--mist);
-  --muted-foreground: color-mix(in srgb, var(--ink) 55%, transparent);
+  --muted-foreground: color-mix(in srgb, var(--ink) 68%, transparent); /* 5.2:1 on paper (55% was 3.5:1) */
   --accent: var(--gold-soft);
   --accent-foreground: var(--ink);
   --destructive: var(--refused);
@@ -127,7 +128,7 @@
   --muted-foreground: color-mix(in srgb, var(--mist) 60%, transparent);
   --accent: color-mix(in srgb, var(--gold) 18%, transparent);
   --accent-foreground: var(--mist);
-  --destructive: #e0788c;
+  --destructive: #ee8fa1;
   --border: color-mix(in srgb, var(--mist) 12%, transparent);
   --input: color-mix(in srgb, var(--mist) 20%, transparent);
   --ring: var(--gold);
@@ -141,21 +142,29 @@
   --sidebar-ring: var(--gold);
   --signed: #7fbf9a;
   --amber-ink: var(--amber);
-  --refused: #e0788c;
+  --refused: #ee8fa1;
+  --halftone: var(--gold);
 }
 
-/* The assistant area is always dark, in both themes. */
+/* Dark forest panel, in both themes. Key cards (balance, run draft, checks, assistant) use it.
+   .agent-area is kept as an alias. Tokens are re-declared so everything inside reads as on dark. */
+.panel-dark,
 .agent-area {
-  --background: var(--forest-950);
+  --background: var(--forest-900);
   --foreground: var(--mist);
-  --card: var(--forest-900);
+  --card: var(--forest-950);
   --card-foreground: var(--mist);
-  --muted-foreground: color-mix(in srgb, var(--mist) 60%, transparent);
-  --border: color-mix(in srgb, var(--mist) 12%, transparent);
+  --primary: var(--gold);
+  --primary-foreground: var(--forest-950);
+  --muted: color-mix(in srgb, var(--mist) 10%, transparent);
+  --muted-foreground: color-mix(in srgb, var(--mist) 70%, transparent);
+  --border: color-mix(in srgb, var(--mist) 14%, transparent);
+  --input: color-mix(in srgb, var(--mist) 22%, transparent);
+  --ring: var(--gold);
   --signed: #7fbf9a;
   --amber-ink: var(--amber);
-  --refused: #e0788c;
-  background: var(--forest-950);
+  --refused: #ee8fa1;
+  background: var(--forest-900);
   color: var(--mist);
 }
 
@@ -173,6 +182,20 @@
     font-family: var(--font-fraunces), serif;
     font-weight: 400;
     letter-spacing: -0.015em;
+  }
+  .page-title {
+    font-size: clamp(40px, 6vw, 48px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  .page-title em {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--forest-900);
+  }
+  .dark .page-title em,
+  .panel-dark .page-title em {
+    color: var(--gold);
   }
   .tnum {
     font-variant-numeric: tabular-nums;
