@@ -1,0 +1,93 @@
+"use client";
+
+import { useMemo } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+
+// Guilloche maths adapted from design/directions.html (our own design file).
+
+function seedFrom(address: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < address.length; i++) {
+    h ^= address.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0 || 1;
+}
+
+function buildPaths(address: string, size: number): string[] {
+  let s = seedFrom(address.toLowerCase());
+  const rnd = () => {
+    s ^= s << 13;
+    s ^= s >>> 17;
+    s ^= s << 5;
+    return ((s >>> 0) % 10000) / 10000;
+  };
+  const a = 3 + Math.floor(rnd() * 5);
+  const b = 7 + Math.floor(rnd() * 9);
+  const d = 0.18 + rnd() * 0.2;
+  const R = size / 2;
+  const steps = 240;
+  const rings = [0.92, 0.68, 0.44];
+  const out: string[] = [];
+  rings.forEach((r, i) => {
+    for (let k = 0; k < 6; k++) {
+      let path = "";
+      for (let n = 0; n <= steps; n++) {
+        const th = (n / steps) * Math.PI * 2;
+        const rr = r * R * (1 - d + d * Math.cos(b * th + (k * Math.PI) / 3 + i) * Math.cos(a * th));
+        const x = R + rr * Math.cos(th);
+        const y = R + rr * Math.sin(th);
+        path += `${n ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+      }
+      out.push(path);
+    }
+  });
+  return out;
+}
+
+type SealProps = {
+  /** Confirmed payee wallet. Omit for the dashed "not a confirmed payee" circle. */
+  address?: string;
+  size?: number;
+  /** Draw the lines in (used when a payee has just confirmed). */
+  animate?: boolean;
+  className?: string;
+};
+
+export function Seal({ address, size = 40, animate = false, className }: SealProps) {
+  const reduce = useReducedMotion();
+  const paths = useMemo(() => (address ? buildPaths(address, 100) : []), [address]);
+
+  if (!address) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100" className={className} role="img" aria-label="Not a confirmed payee">
+        <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeOpacity="0.4" strokeWidth="2" strokeDasharray="5 6" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      className={className}
+      role="img"
+      aria-label={`Payee seal for ${address.slice(0, 6)}…${address.slice(-4)}`}
+    >
+      {paths.map((p, i) => (
+        <motion.path
+          key={i}
+          d={p}
+          fill="none"
+          stroke={i >= 6 && i < 12 ? "var(--sage)" : "currentColor"}
+          strokeOpacity={0.6}
+          strokeWidth={0.6}
+          initial={animate && !reduce ? { pathLength: 0 } : false}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 1.1, delay: i * 0.03, ease: "easeOut" }}
+        />
+      ))}
+    </svg>
+  );
+}
