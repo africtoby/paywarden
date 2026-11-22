@@ -4,6 +4,45 @@ import { formatAmount, formatDuration, parseAmount } from "./format";
 import { inviteLink, payeeId, randomSalt } from "./payee";
 import { explainRevert, MESSAGES } from "./errors";
 import { payrollVaultAbi, agentSpendPolicyAbi } from "./contracts";
+import { evaluateDraft, type DemoPolicy } from "./demo-rules";
+
+describe("landing demo rules mirror the contract", () => {
+  const ada = "0x7a3f00000000000000000000000000000000a91c";
+  const kemi = "0x51be0000000000000000000000000000000004d2";
+  const policy: DemoPolicy = {
+    confirmed: new Set([ada, kemi]),
+    perPayee: 800_000_000n,
+    perRun: 2_000_000_000n,
+    periodLeft: 4_000_000_000n,
+    expired: false,
+    paused: false,
+    alreadyPaid: false,
+  };
+  const honest = [
+    { name: "Ada", wallet: ada, amount: 600_000_000n },
+    { name: "Kemi", wallet: kemi, amount: 450_000_000n },
+  ];
+
+  it("passes all seven checks for an honest timesheet", () => {
+    const r = evaluateDraft(honest, policy);
+    expect(r.checks.every((c) => c.ok)).toBe(true);
+    expect(r.refusal).toBeNull();
+    expect(r.total).toBe(1_050_000_000n);
+  });
+
+  it("refuses a poisoned line: unknown wallet and over the per-person cap", () => {
+    const r = evaluateDraft([...honest, { name: "SYSTEM", wallet: "0xbad0000000000000000000000000000000000001", amount: 5_000_000_000n }], policy);
+    const failed = r.checks.filter((c) => !c.ok).map((c) => c.label);
+    expect(failed).toContain("Confirmed payee");
+    expect(failed).toContain("Per-person cap");
+    expect(r.refusal).toMatch(/not confirmed/);
+  });
+
+  it("refuses a confirmed payee paid over the cap", () => {
+    const r = evaluateDraft([{ name: "Ada", wallet: ada, amount: 900_000_000n }], policy);
+    expect(r.refusal).toMatch(/per-person cap/);
+  });
+});
 
 describe("amounts (tUSD8, 6 decimals)", () => {
   it("parses and formats", () => {

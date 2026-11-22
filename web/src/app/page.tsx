@@ -1,140 +1,124 @@
 import Link from "next/link";
-import { Seal } from "@/components/seal";
 import { buttonVariants } from "@/components/ui/button";
+import { Halftone } from "@/components/landing/halftone";
+import { HeroDemo } from "@/components/landing/hero-demo";
+import { TrickDemo } from "@/components/landing/trick-demo";
+import { HowPanels } from "@/components/landing/how-panels";
+import { PaydayTimeline } from "@/components/landing/payday-timeline";
+import { ChainPulse } from "@/components/landing/chain-pulse";
 
-const CHECKS = [
-  "Confirmed payee",
-  "Per-person cap",
-  "Per-run cap",
-  "Monthly cap",
-  "Assistant not expired",
-  "Vault not paused",
-  "Not already paid",
-];
+const GITHUB = "https://github.com/africtoby/paywarden";
+const DORAHACKS = "https://dorahacks.io/hackathon/qday/detail";
+const EXPLORER = "https://explorer-test.qday.info";
 
-const STEPS = [
-  ["Invite", "Add each payee by name. They confirm with their own wallet, so you only ever pay people who vouched for their address."],
-  ["Draft", "Your assistant reads a timesheet and drafts a run. It can only propose. It can never approve or pay."],
-  ["Sign", "The contract checks every draft. You review it, then sign once and everyone is paid."],
-];
-
-const TIMELINE = [
-  ["06:42", "Drafted", "The assistant prepares the run from the timesheet."],
-  ["06:43", "Checked (7/7)", "The contract confirms every rule."],
-  ["07:58", "Signed", "You approve after the review window."],
-  ["07:58", "Paid", "tUSD8 reaches each confirmed wallet."],
-];
+const goldCta =
+  "relative h-12 overflow-hidden rounded-full bg-[var(--gold)] px-7 text-[16px] text-[var(--forest-950)] before:absolute before:inset-0 before:-translate-x-full before:bg-[var(--gold-soft)] before:transition-transform before:duration-500 before:ease-out hover:bg-[var(--gold)] hover:before:translate-x-0 [&>span]:relative";
 
 export default function Landing() {
   return (
     <div className="bg-[var(--paper)] text-[var(--ink)]">
-      <section className="bg-[var(--forest-950)] text-[var(--mist)]">
-        <div className="relative mx-auto max-w-[1200px] overflow-hidden px-5 pb-20 pt-6 md:px-10">
-          <Seal address="0xpaywarden-hero-rosette" size={760} className="pointer-events-none absolute -right-48 -top-40 hidden text-[var(--gold)] opacity-20 md:block" />
-          <header className="relative flex items-center justify-between">
+      {/* Hero */}
+      <section className="relative overflow-hidden bg-[var(--forest-950)] text-[var(--mist)]">
+        <Halftone className="absolute -right-[14%] -top-[18%] size-[min(980px,95vw)] opacity-[0.22]" />
+        <div className="relative mx-auto max-w-[1200px] px-5 pb-20 pt-6 md:px-10 md:pb-28">
+          <header className="flex items-center justify-between">
             <span className="font-serif text-[22px]">PayWarden</span>
-            <Link href="/app" className={buttonVariants({ variant: "outline", className: "rounded-full border-[var(--mist)]/30 bg-transparent text-[var(--mist)] hover:bg-[var(--mist)]/10" })}>
-              Launch app
-            </Link>
+            <nav className="flex items-center gap-6 text-[14px] text-[var(--mist)]/70">
+              <a href="#trick" className="hidden transition-colors hover:text-[var(--mist)] sm:inline">Try to trick it</a>
+              <a href={GITHUB} target="_blank" rel="noreferrer" className="hidden transition-colors hover:text-[var(--mist)] sm:inline">Source</a>
+              <Link href="/app" className={buttonVariants({ variant: "outline", className: "rounded-full border-[var(--mist)]/25 bg-transparent px-4 text-[var(--mist)] hover:bg-[var(--mist)]/10 hover:text-[var(--mist)]" })}>
+                Launch app
+              </Link>
+            </nav>
           </header>
 
-          <div className="relative mt-20 max-w-3xl md:mt-28">
-            <p className="meta text-[var(--sage)]">Stablecoin payroll · Aevum testnet</p>
-            <h1 className="mt-4 text-[44px] leading-[1.05] md:text-[56px]">
-              Payroll your AI prepares.
-              <br />
-              <em className="font-light">Only you can sign.</em>
-            </h1>
-            <p className="mt-5 max-w-xl text-[18px] text-[var(--mist)]/75">
-              An assistant drafts each pay run. A contract checks it against limits you set. Nothing moves until you sign.
-            </p>
-            <Link href="/app" className={buttonVariants({ size: "lg", className: "mt-8 rounded-full bg-[var(--gold)] px-7 text-[var(--forest-950)] hover:bg-[var(--gold-soft)]" })}>
-              Launch app
-            </Link>
-          </div>
-
-          <div className="relative mt-16 rounded-[24px] border border-[var(--mist)]/12 bg-[var(--forest-900)] p-5 md:p-8" aria-label="Product preview">
-            <p className="meta text-[var(--sage)]">Your assistant drafts. You sign.</p>
-            <div className="mt-4 divide-y divide-[var(--mist)]/12">
-              {[
-                ["Pay 3 contractors for November", "1,450 tUSD8", "AWAITING", "text-[var(--amber)]"],
-                ["Pay 2 contractors for October", "980 tUSD8", "SIGNED", "text-[#7fbf9a]"],
-              ].map(([t, a, s, c]) => (
-                <div key={t} className="flex flex-wrap items-center gap-x-6 gap-y-1 py-3.5">
-                  <span className="min-w-0 flex-1 font-serif text-[18px]">{t}</span>
-                  <span className="tnum font-serif text-[18px]">{a}</span>
-                  <span className={`meta ${c}`}>{s}</span>
-                </div>
-              ))}
+          <div className="mt-20 grid gap-14 lg:mt-24 lg:grid-cols-[1fr_minmax(0,560px)] lg:items-center">
+            <div>
+              <h1 className="text-[clamp(48px,7.2vw,88px)] leading-[0.98] tracking-[-0.03em] [text-wrap:balance]">
+                Payroll your AI prepares.{" "}
+                <em className="font-light text-[var(--gold)]">Only you can sign.</em>
+              </h1>
+              <p className="mt-7 max-w-[34rem] text-[18px] leading-relaxed text-[var(--mist)]/72">
+                An assistant drafts each pay run in tUSD8. A contract on Aevum checks it against limits you set. Nothing moves until you sign.
+              </p>
+              <div className="mt-9 flex flex-wrap items-center gap-5">
+                <Link href="/app" className={buttonVariants({ className: goldCta })}>
+                  <span>Launch app</span>
+                </Link>
+                <a href="#trick" className="text-[15px] text-[var(--mist)]/75 underline decoration-[var(--mist)]/25 underline-offset-[6px] transition-colors hover:text-[var(--mist)] hover:decoration-[var(--gold)]">
+                  Watch it refuse a bad draft
+                </a>
+              </div>
             </div>
+            <HeroDemo />
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1200px] px-5 py-24 md:px-10" aria-labelledby="how">
-        <h2 id="how" className="text-[36px]">How it works</h2>
-        <ol className="mt-10 divide-y divide-[var(--ink)]/10 border-y border-[var(--ink)]/10">
-          {STEPS.map(([t, d], i) => (
-            <li key={t} className="grid gap-2 py-7 md:grid-cols-[80px_220px_1fr]">
-              <span className="meta text-[var(--ink)]/36">0{i + 1}</span>
-              <h3 className="text-[28px]">{t}</h3>
-              <p className="max-w-xl text-[16px] text-[var(--ink)]/65">{d}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="bg-[var(--forest-900)] text-[var(--mist)]" aria-labelledby="checks">
-        <div className="mx-auto grid max-w-[1200px] gap-10 px-5 py-24 md:grid-cols-2 md:px-10">
-          <div>
-            <h2 id="checks" className="text-[36px]">Seven checks, enforced by the contract.</h2>
-            <p className="mt-4 max-w-md text-[16px] text-[var(--mist)]/70">
-              Not a promise from software. The rules live on-chain, so even a tricked assistant cannot pay past them.
-            </p>
-          </div>
-          <ul>
-            {CHECKS.map((c) => (
-              <li key={c} className="flex items-center justify-between border-t border-[var(--mist)]/12 py-3 font-mono text-[13px] first:border-t-0">
-                <span>{c}</span>
-                <span className="text-[#7fbf9a]">PASS</span>
-              </li>
-            ))}
-          </ul>
+      {/* How it works */}
+      <section className="mx-auto max-w-[1200px] px-5 py-24 md:px-10 md:py-32" aria-labelledby="how">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h2 id="how" className="max-w-xl text-[clamp(34px,4vw,48px)] leading-[1.05] tracking-[-0.02em]">
+            Three moves, and only one of them is yours.
+          </h2>
+          <p className="max-w-sm text-[16px] text-[var(--ink)]/60">Payees vouch for their wallets. The assistant does the paperwork. You keep the pen.</p>
+        </div>
+        <div className="mt-12">
+          <HowPanels />
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1200px] px-5 py-24 md:px-10" aria-labelledby="day">
-        <h2 id="day" className="text-[36px]">One payday morning</h2>
-        <ol className="mt-10 grid gap-0 border-l border-[var(--ink)]/15">
-          {TIMELINE.map(([t, s, d]) => (
-            <li key={s} className="relative grid gap-1 pb-8 pl-8 md:grid-cols-[100px_200px_1fr]">
-              <span className="absolute -left-[5px] top-1.5 size-2.5 rounded-full bg-[var(--forest-900)]" aria-hidden />
-              <span className="meta text-[var(--ink)]/55">{t}</span>
-              <span className="meta">{s}</span>
-              <span className="text-[16px] text-[var(--ink)]/65">{d}</span>
-            </li>
-          ))}
-        </ol>
+      {/* Try to trick it */}
+      <section id="trick" className="scroll-mt-6 bg-[var(--forest-900)] text-[var(--mist)]" aria-labelledby="trick-h">
+        <div className="mx-auto max-w-[1200px] px-5 py-24 md:px-10 md:py-32">
+          <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-end">
+            <h2 id="trick-h" className="text-[clamp(34px,4vw,48px)] leading-[1.05] tracking-[-0.02em]">
+              Try to trick it. <em className="font-light text-[var(--gold)]">The contract won&apos;t budge.</em>
+            </h2>
+            <p className="max-w-md text-[16px] text-[var(--mist)]/70 lg:justify-self-end">
+              Seven rules live on-chain: confirmed payees, per-person, per-run and monthly caps, expiry, pause and no double pay. Even a fooled assistant can&apos;t get past them.
+            </p>
+          </div>
+          <div className="mt-12">
+            <TrickDemo />
+          </div>
+        </div>
       </section>
 
-      <section className="mx-auto max-w-[1200px] px-5 pb-24 md:px-10" aria-labelledby="open">
-        <h2 id="open" className="text-[36px]">Open source, on testnet</h2>
-        <dl className="mt-8 grid gap-6 md:grid-cols-3">
-          {[
-            ["Network", "QDay Aevum Testnet"],
-            ["Token", "tUSD8, 6 decimals"],
-            ["Licence", "MIT, contracts verified on the explorer"],
-          ].map(([k, v]) => (
-            <div key={k} className="border-t border-[var(--ink)]/10 pt-4">
-              <dt className="meta text-[var(--ink)]/55">{k}</dt>
-              <dd className="mt-1 font-serif text-[22px]">{v}</dd>
-            </div>
-          ))}
-        </dl>
+      {/* One payday */}
+      <section className="mx-auto max-w-[1200px] px-5 py-24 md:px-10 md:py-32" aria-labelledby="day">
+        <h2 id="day" className="text-[clamp(34px,4vw,48px)] leading-[1.05] tracking-[-0.02em]">One payday, start to finish</h2>
+        <PaydayTimeline />
       </section>
 
-      <footer className="border-t border-[var(--ink)]/10 px-5 py-8 text-center text-[13px] text-[var(--ink)]/55">
-        PayWarden · Aevum Builder Challenge · Test funds only
+      {/* Proof */}
+      <section className="border-t border-[var(--ink)]/10" aria-labelledby="proof">
+        <div className="mx-auto max-w-[1200px] px-5 py-20 md:px-10">
+          <h2 id="proof" className="sr-only">Running on Aevum testnet</h2>
+          <ChainPulse />
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="relative overflow-hidden bg-[var(--forest-950)] text-[var(--mist)]">
+        <div className="mx-auto max-w-[1200px] px-5 pt-16 md:px-10">
+          <div className="flex flex-wrap items-start justify-between gap-8">
+            <p className="max-w-sm text-[15px] text-[var(--mist)]/65">
+              Open source under MIT. Built for the Aevum Builder Challenge. Test funds only, never real money.
+            </p>
+            <nav className="flex gap-6 text-[14px] text-[var(--mist)]/75" aria-label="Footer">
+              <a href={GITHUB} target="_blank" rel="noreferrer" className="hover:text-[var(--mist)]">GitHub</a>
+              <a href={EXPLORER} target="_blank" rel="noreferrer" className="hover:text-[var(--mist)]">Explorer</a>
+              <a href={DORAHACKS} target="_blank" rel="noreferrer" className="hover:text-[var(--mist)]">DoraHacks</a>
+            </nav>
+          </div>
+          <p
+            aria-hidden
+            className="mt-10 select-none font-serif text-[clamp(72px,17vw,232px)] leading-[0.8] tracking-[-0.04em] text-transparent [-webkit-text-stroke:1px_color-mix(in_srgb,var(--gold)_55%,transparent)]"
+          >
+            PayWarden
+          </p>
+        </div>
       </footer>
     </div>
   );

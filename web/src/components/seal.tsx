@@ -14,7 +14,7 @@ function seedFrom(address: string): number {
   return h >>> 0 || 1;
 }
 
-function buildPaths(address: string, size: number): string[] {
+export function buildPaths(address: string, size: number): string[] {
   let s = seedFrom(address.toLowerCase());
   const rnd = () => {
     s ^= s << 13;

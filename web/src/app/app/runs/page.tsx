@@ -7,6 +7,7 @@ import type { Address, Hex } from "viem";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Seal } from "@/components/seal";
+import { SignatureMark } from "@/components/signature-mark";
 import { payrollVaultAbi, RUN_STATUS, TOKEN_SYMBOL, type RunStatus } from "@/lib/contracts";
 import { txUrl } from "@/lib/chain";
 import { formatAmount, formatDuration, shortHash } from "@/lib/format";
@@ -193,6 +194,12 @@ export default function RunsPage() {
                     </section>
 
                     <section aria-label="Actions" className="flex flex-wrap items-start gap-3">
+                      {r.status === "Executed" && (
+                        <div>
+                          <SignatureMark name="Approved" className="text-[44px] text-[var(--forest-900)] dark:text-[var(--gold)]" />
+                          <p className="font-mono text-[11px] text-[var(--sage)]">Signed and paid · {formatAmount(r.total)} {TOKEN_SYMBOL}</p>
+                        </div>
+                      )}
                       {r.status === "Proposed" && (
                         <>
                           <Button className="rounded-full" onClick={() => tx("Approve run", { address: vault, abi: payrollVaultAbi, functionName: "approveRun", args: [r.runKey] })}>
