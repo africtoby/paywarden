@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Address, Hex } from "viem";
 import { Seal } from "@/components/seal";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusChip } from "@/components/status-chip";
 import { payrollVaultAbi } from "@/lib/contracts";
 import { addressUrl } from "@/lib/chain";
 import { shortAddress } from "@/lib/format";
@@ -35,6 +36,8 @@ export default function PayeesPage() {
   const [name, setName] = useState("");
   const [invites, setInvites] = useState<Invite[]>([]);
   const [busy, setBusy] = useState(false);
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
+  const seen = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     const vault = v.vault;
@@ -49,6 +52,17 @@ export default function PayeesPage() {
     }
     return m;
   }, [events.data]);
+
+  // A seal only draws in when a payee confirms while this page is open; on load they are already drawn.
+  useEffect(() => {
+    if (events.isLoading) return;
+    const ids = new Set(confirmed.keys());
+    const before = seen.current;
+    seen.current = ids;
+    if (!before) return;
+    const added = [...ids].filter((id) => !before.has(id));
+    if (added.length) queueMicrotask(() => setFresh((f) => new Set([...f, ...added])));
+  }, [confirmed, events.isLoading]);
 
   const invite = async () => {
     if (!v.vault || !name.trim()) return;
@@ -72,14 +86,26 @@ export default function PayeesPage() {
     const link = inviteLink(window.location.origin, v.vault!, i.name, i.salt);
     try {
       await navigator.clipboard.writeText(link);
-      toast.success("Invite link copied. Send it to the payee.");
+      toast.success("Copied", { description: `Send ${i.name} the invite link.` });
     } catch {
       toast.error("Could not copy. Select the link and copy it by hand.", { description: link });
     }
   };
 
   if (!v.isConnected) return <p className="pt-10 text-[16px] text-muted-foreground">Connect your wallet to manage payees.</p>;
-  if (v.loading) return <Skeleton className="mt-6 h-64 w-full rounded-2xl" aria-busy="true" />;
+  if (v.loading)
+    return (
+      <div aria-busy="true" className="grid gap-8 pt-4">
+        <div className="grid gap-3">
+          <Skeleton className="h-12 w-64" />
+          <Skeleton className="h-5 w-full max-w-xl" />
+        </div>
+        <Skeleton className="h-[148px] w-full rounded-2xl" />
+        <div className="grid gap-2">
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-[73px] w-full" />)}
+        </div>
+      </div>
+    );
   if (!v.hasVault) return <p className="pt-10 text-[16px] text-muted-foreground">Create your vault on the Overview page first.</p>;
 
   return (
@@ -119,26 +145,22 @@ export default function PayeesPage() {
             {invites.map((i) => {
               const wallet = confirmed.get(i.id);
               return (
-                <li key={i.id} className="flex items-center gap-4 py-4">
-                  <Seal address={wallet} size={44} animate className="shrink-0 text-[var(--forest-900)] dark:text-[var(--mist)]" />
+                <li key={i.id} className="flex min-h-[73px] flex-wrap items-center gap-x-4 gap-y-2 py-4">
+                  <Seal key={fresh.has(i.id) ? "fresh" : "static"} address={wallet} size={40} animate={fresh.has(i.id)} className="shrink-0 text-[var(--forest-900)] dark:text-[var(--mist)]" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-serif text-[18px]">{i.name}</p>
                     {wallet ? (
-                      <a href={addressUrl(wallet)} target="_blank" rel="noreferrer" className="font-mono text-[12px] text-muted-foreground hover:underline">
+                      <a href={addressUrl(wallet)} target="_blank" rel="noreferrer" className="font-mono text-[12px] text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
                         {shortAddress(wallet)}
                       </a>
                     ) : (
                       <p className="text-[12px] text-muted-foreground">Not a confirmed payee</p>
                     )}
                   </div>
-                  <span
-                    className={`meta rounded-full px-3 py-1 ${wallet ? "bg-[var(--signed)]/12 text-[var(--signed)]" : "bg-[var(--amber)]/15 text-[var(--amber-ink)]"}`}
-                  >
-                    {wallet ? "Confirmed" : "Invited"}
-                  </span>
+                  <StatusChip kind={wallet ? "signed" : "awaiting"}>{wallet ? "Confirmed" : "Invited"}</StatusChip>
                   {!wallet && (
                     <Button variant="outline" size="sm" className="rounded-full" onClick={() => copy(i)}>
-                      Copy link
+                      Copy invite link
                     </Button>
                   )}
                 </li>

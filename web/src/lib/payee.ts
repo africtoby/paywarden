@@ -16,3 +16,13 @@ export function inviteLink(origin: string, vault: string, name: string, salt: He
   const p = new URLSearchParams({ vault, name, salt });
   return `${origin}/confirm#${p.toString()}`;
 }
+
+/** Names typed when inviting. They live only in this browser; the chain stores just the hash. */
+export function payeeNames(vault: string): Map<string, string> {
+  try {
+    const list = JSON.parse(localStorage.getItem(`paywarden:invites:${vault.toLowerCase()}`) ?? "[]") as { id: string; name: string }[];
+    return new Map(list.map((i) => [i.id, i.name]));
+  } catch {
+    return new Map();
+  }
+}

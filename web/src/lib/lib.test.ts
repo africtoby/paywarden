@@ -5,6 +5,8 @@ import { inviteLink, payeeId, randomSalt } from "./payee";
 import { explainRevert, MESSAGES } from "./errors";
 import { payrollVaultAbi, agentSpendPolicyAbi } from "./contracts";
 import { evaluateDraft, type DemoPolicy } from "./demo-rules";
+import { checkRun } from "./run-checks";
+import { permissionSentence } from "./assistant-sentence";
 
 describe("landing demo rules mirror the contract", () => {
   const ada = "0x7a3f00000000000000000000000000000000a91c";
@@ -94,5 +96,37 @@ describe("error messages", () => {
   });
   it("returns null for unknown errors", () => {
     expect(explainRevert("Nope")).toBeNull();
+  });
+});
+
+describe("run checks (live state)", () => {
+  const policy = { agent: "0x0000000000000000000000000000000000000001" as const, perRun: 2_000_000_000n, perPayee: 800_000_000n, periodCap: 5_000_000_000n, period: 2_592_000n, expiry: 0n };
+  const base = { amounts: [600_000_000n, 450_000_000n], total: 1_050_000_000n, status: "Proposed" as const, confirmedCount: 2, payeeCount: 2, policy, revoked: false, paused: false, remaining: 4_000_000_000n, now: 1_000 };
+
+  it("passes seven of seven for an honest run", () => {
+    const r = checkRun(base);
+    expect(r.checks).toHaveLength(7);
+    expect(r.checks.every((c) => c.ok)).toBe(true);
+    expect(r.refusal).toBeNull();
+  });
+  it("reports the first failing rule in contract order", () => {
+    const r = checkRun({ ...base, confirmedCount: 1, amounts: [900_000_000n, 450_000_000n] });
+    expect(r.checks.filter((c) => !c.ok).map((c) => c.label)).toEqual(["Confirmed payee", "Per-person cap"]);
+    expect(r.refusal).toMatch(/not confirmed/);
+  });
+  it("refuses when the vault is paused or the assistant is switched off", () => {
+    expect(checkRun({ ...base, paused: true }).refusal).toMatch(/paused/);
+    expect(checkRun({ ...base, revoked: true }).refusal).toMatch(/turned off/);
+  });
+  it("treats a paid run as 7/7", () => {
+    expect(checkRun({ ...base, status: "Executed", paused: true }).checks.every((c) => c.ok)).toBe(true);
+  });
+});
+
+describe("permission sentence", () => {
+  it("reads in plain English", () => {
+    const s = permissionSentence({ perPayee: 800_000_000n, perRun: 2_000_000_000n, periodCap: 5_000_000_000n, periodDays: 30, expiry: null });
+    expect(s).toContain("up to 800 per person, 2,000 per run and 5,000 a month");
+    expect(s).toContain("no end date");
   });
 });

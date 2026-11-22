@@ -7,9 +7,12 @@ import { AllowanceMeter } from "@/components/allowance-meter";
 import { BalanceCard } from "@/components/balance-card";
 import { Wizard, wizardStep } from "@/components/wizard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusChip, type ChipKind } from "@/components/status-chip";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { addressUrl } from "@/lib/chain";
-import { formatAmount, formatDuration, shortAddress } from "@/lib/format";
+import { addressUrl, txUrl } from "@/lib/chain";
+import { describeEvent } from "@/lib/describe-event";
+import { formatAmount, formatDuration, shortAddress, shortHash } from "@/lib/format";
+import { useVaultEvents, type VaultEvent } from "@/lib/use-logs";
 import { useVault } from "@/lib/use-vault";
 import { useTx } from "@/lib/use-tx";
 import { payrollVaultAbi, TOKEN_SYMBOL } from "@/lib/contracts";
@@ -23,9 +26,41 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+const NEXT: Record<string, { kind: ChipKind; text: string }> = {
+  RunProposed: { kind: "awaiting", text: "Awaiting" },
+  RunApproved: { kind: "awaiting", text: "Approved" },
+  RunCancelled: { kind: "refused", text: "Cancelled" },
+  RunExecuted: { kind: "signed", text: "Signed" },
+};
+
+/** The latest drafted run and where it stands, read from the event log. */
+function latestRun(events: readonly VaultEvent[]) {
+  const proposed = [...events].reverse().find((e) => e.name === "RunProposed");
+  if (!proposed) return null;
+  const later = events.filter((e) => e.args.runKey === proposed.args.runKey && e.name in NEXT);
+  const last = later[later.length - 1] ?? proposed;
+  return { total: proposed.args.total as bigint, chip: NEXT[last.name], at: proposed.timestamp };
+}
+
+function OverviewSkeleton() {
+  return (
+    <div aria-busy="true" className="grid gap-8 pt-4">
+      <Skeleton className="h-[188px] w-full rounded-2xl md:h-[204px]" />
+      <div className="grid gap-6 md:grid-cols-2">
+        <Skeleton className="h-[330px] rounded-2xl" />
+        <Skeleton className="h-[330px] rounded-2xl" />
+      </div>
+      <div className="grid gap-2">
+        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-11 w-full" />)}
+      </div>
+    </div>
+  );
+}
+
 export default function Overview() {
   const v = useVault();
   const tx = useTx();
+  const events = useVaultEvents(v.vault, v.policyAddress);
 
   if (!v.isConnected) {
     return (
@@ -39,12 +74,14 @@ export default function Overview() {
     );
   }
 
-  if (v.loading) {
+  if (v.loading) return <OverviewSkeleton />;
+
+  if (!v.hasVault) {
     return (
-      <div aria-busy="true" className="grid gap-6 pt-6">
-        <Skeleton className="h-4 w-28" />
-        <Skeleton className="h-16 w-72" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
+      <div className="grid max-w-xl gap-6 pt-4">
+        <h1 className="page-title">Create your <em>vault.</em></h1>
+        <p className="text-[16px] text-muted-foreground">One vault holds your payroll. Your assistant drafts runs against it, and only you can sign.</p>
+        <Wizard />
       </div>
     );
   }
@@ -56,7 +93,7 @@ export default function Overview() {
     <div className="grid gap-8 pt-4">
       <BalanceCard balance={v.balance ?? 0n} paused={v.paused} />
 
-      <Wizard />
+      {step < 3 && <Wizard />}
 
       {step === 3 && v.policy && v.vault && (
         <div className="grid gap-6 md:grid-cols-2">
@@ -105,6 +142,52 @@ export default function Overview() {
           </section>
         </div>
       )}
+
+      {step === 3 && <RecentActivity events={events.data} loading={events.isLoading} />}
     </div>
+  );
+}
+
+function RecentActivity({ events, loading }: { events?: readonly VaultEvent[]; loading: boolean }) {
+  const run = latestRun(events ?? []);
+  const recent = [...(events ?? [])].reverse().slice(0, 5);
+  return (
+    <section aria-labelledby="recent" className="grid gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="recent" className="text-[22px]">Recent activity</h2>
+        <Link href="/app/runs" className="flex min-h-7 items-center gap-3 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4">
+          <span className="meta text-muted-foreground">Latest run</span>
+          {run ? (
+            <>
+              <span className="tnum text-[14px]">{formatAmount(run.total)} {TOKEN_SYMBOL}</span>
+              <StatusChip kind={run.chip.kind}>{run.chip.text}</StatusChip>
+            </>
+          ) : (
+            <span className="text-[14px] text-muted-foreground">No run waiting</span>
+          )}
+        </Link>
+      </div>
+      {loading ? (
+        <div aria-busy="true" className="grid gap-2">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-11 w-full" />)}
+        </div>
+      ) : recent.length === 0 ? (
+        <p className="text-[14px] text-muted-foreground">Nothing yet.</p>
+      ) : (
+        <ul className="divide-y divide-border border-y border-border">
+          {recent.map((e) => (
+            <li key={e.txHash + e.logIndex} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3">
+              <span className="meta w-[110px] shrink-0 text-muted-foreground">
+                {new Date(e.timestamp * 1000).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+              </span>
+              <span className="min-w-0 flex-1 text-[14px]">{describeEvent(e)}</span>
+              <a href={txUrl(e.txHash)} target="_blank" rel="noreferrer" className="font-mono text-[12px] text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
+                {shortHash(e.txHash)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

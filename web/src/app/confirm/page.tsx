@@ -6,8 +6,10 @@ import { isAddress, isHex, type Address, type Hex } from "viem";
 import { useAccount } from "wagmi";
 import { Seal } from "@/components/seal";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { payrollVaultAbi } from "@/lib/contracts";
-import { shortAddress } from "@/lib/format";
+import { txUrl } from "@/lib/chain";
+import { shortAddress, shortHash } from "@/lib/format";
 import { useTx } from "@/lib/use-tx";
 
 type Invite = { vault: Address; name: string; salt: Hex };
@@ -17,7 +19,7 @@ export default function ConfirmPage() {
   const { address, isConnected } = useAccount();
   const tx = useTx();
   const [invite, setInvite] = useState<Invite | null | undefined>(undefined);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<Hex | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -34,54 +36,67 @@ export default function ConfirmPage() {
     setBusy(true);
     const hash = await tx("Confirm payee", { address: invite.vault, abi: payrollVaultAbi, functionName: "confirmPayee", args: [invite.name, invite.salt] });
     setBusy(false);
-    if (hash) setDone(true);
+    if (hash) setDone(hash);
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-6 px-5 py-12">
+    <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-6 px-5 py-12">
       <p className="font-serif text-[22px]">PayWarden</p>
 
-      {invite === undefined && <p className="text-muted-foreground">Loading your invite…</p>}
-
-      {invite === null && (
-        <>
-          <h1 className="text-[28px]">This invite link looks incomplete.</h1>
-          <p className="text-[16px] text-muted-foreground">Ask your employer to send the link again, and open it in full.</p>
-        </>
-      )}
-
-      {invite && (
-        <section className="rounded-2xl border border-border bg-card p-6 md:p-8">
-          <div className="flex items-center gap-4">
-            <Seal address={done ? address : undefined} size={64} animate className="text-[var(--forest-900)] dark:text-[var(--mist)]" />
-            <div>
-              <p className="meta text-muted-foreground">Confirmation of payee</p>
-              <h1 className="text-[28px] leading-tight">{invite.name}</h1>
-            </div>
+      <section aria-busy={invite === undefined} className="w-full rounded-2xl border border-border bg-[var(--paper-2)] p-6 text-center dark:bg-card md:p-10">
+        {invite === undefined && (
+          <div className="grid place-items-center gap-4">
+            <Skeleton className="size-24 rounded-full" />
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-9 w-56" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-9 w-48 rounded-full" />
           </div>
+        )}
 
-          {done ? (
-            <p role="status" className="mt-6 text-[16px]">
-              Confirmed. Your wallet {address && shortAddress(address)} is now linked to {invite.name}. You can close this page.
-            </p>
-          ) : (
-            <>
-              <p className="mt-6 text-[16px] text-muted-foreground">
-                Your employer invited you to be paid in tUSD8. Confirming links the wallet you are connected with to this name. Only that wallet will ever receive your pay.
-              </p>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                {isConnected ? (
-                  <Button className="rounded-full" disabled={busy} onClick={confirm}>
-                    Confirm with this wallet
-                  </Button>
-                ) : (
-                  <WalletButton label="Connect wallet to confirm" />
-                )}
+        {invite === null && (
+          <div className="grid gap-3">
+            <Seal size={72} className="mx-auto text-[var(--foreground)]" />
+            <h1 className="text-[28px]">This invite link looks incomplete.</h1>
+            <p className="text-[16px] text-muted-foreground">Ask your employer to send the link again, and open it in full.</p>
+          </div>
+        )}
+
+        {invite && (
+          <div className="grid justify-items-center gap-4">
+            <Seal key={done ? "done" : "open"} address={done ? address : undefined} size={96} animate className="text-[var(--forest-900)] dark:text-[var(--mist)]" />
+            <p className="meta text-muted-foreground">Confirmation of payee</p>
+            <h1 className="text-[28px] leading-tight">{invite.name}</h1>
+
+            {done ? (
+              <div role="status" className="grid justify-items-center gap-2">
+                <p className="font-serif text-[22px]">You&apos;re a confirmed payee</p>
+                <p className="text-[16px] text-muted-foreground">
+                  Your wallet {address && shortAddress(address)} is now linked to {invite.name}. You can close this page.
+                </p>
+                <a href={txUrl(done)} target="_blank" rel="noreferrer" className="font-mono text-[12px] text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
+                  {shortHash(done)}
+                </a>
               </div>
-            </>
-          )}
-        </section>
-      )}
+            ) : (
+              <>
+                <p className="max-w-sm text-[16px] text-muted-foreground">
+                  Your employer invited you to be paid in tUSD8. Confirming links the wallet you are connected with to this name. Only that wallet will ever receive your pay.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  {isConnected ? (
+                    <Button className="rounded-full" disabled={busy} onClick={confirm}>
+                      Confirm with this wallet
+                    </Button>
+                  ) : (
+                    <WalletButton label="Connect wallet to confirm" />
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </section>
     </main>
   );
 }

@@ -1,16 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useReadContracts } from "wagmi";
 import type { Address, Hex } from "viem";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { EventTimeline } from "@/components/event-timeline";
 import { Seal } from "@/components/seal";
 import { SignatureMark } from "@/components/signature-mark";
+import { StatusChip, type ChipKind } from "@/components/status-chip";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { payrollVaultAbi, RUN_STATUS, TOKEN_SYMBOL, type RunStatus } from "@/lib/contracts";
 import { txUrl } from "@/lib/chain";
-import { formatAmount, formatDuration, shortHash } from "@/lib/format";
+import { formatAmount, formatDuration, shortAddress, shortHash } from "@/lib/format";
+import { payeeNames } from "@/lib/payee";
+import { checkRun } from "@/lib/run-checks";
 import { useVaultEvents, type VaultEvent } from "@/lib/use-logs";
 import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
@@ -27,29 +31,48 @@ type Run = {
   events: VaultEvent[];
 };
 
-const time = (ts: number) =>
-  new Date(ts * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+const time = (ts: number) => new Date(ts * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
-const CHIP: Record<RunStatus, { text: string; cls: string }> = {
-  None: { text: "UNKNOWN", cls: "" },
-  Proposed: { text: "AWAITING", cls: "bg-[var(--amber)]/20 text-[var(--amber-ink)]" },
-  Approved: { text: "APPROVED", cls: "bg-[var(--amber)]/20 text-[var(--amber-ink)]" },
-  Cancelled: { text: "REFUSED", cls: "bg-[var(--refused)]/15 text-[var(--refused)]" },
-  Executed: { text: "SIGNED", cls: "bg-[var(--signed)]/15 text-[var(--signed)]" },
+const CHIP: Record<RunStatus, { text: string; kind: ChipKind }> = {
+  None: { text: "UNKNOWN", kind: "idle" },
+  Proposed: { text: "AWAITING", kind: "awaiting" },
+  Approved: { text: "APPROVED", kind: "awaiting" },
+  Cancelled: { text: "CANCELLED", kind: "refused" },
+  Executed: { text: "SIGNED", kind: "signed" },
 };
 
+const STEP_NAME: Record<string, string> = {
+  RunProposed: "Drafted",
+  RunApproved: "Approved",
+  RunCancelled: "Cancelled",
+  RunExecuted: "Signed and paid",
+};
+
+/** One check, ticking in 80ms after the one before it. */
 function Check({ ok, label, i }: { ok: boolean; label: string; i: number }) {
   const reduce = useReducedMotion();
   return (
     <motion.li
       initial={reduce ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ delay: i * 0.08 }}
+      transition={{ delay: i * 0.08, duration: 0.15 }}
       className="flex items-center justify-between gap-3 border-t border-border py-2 font-mono text-[13px] first:border-t-0"
     >
       <span>{label}</span>
-      <span className={ok ? "text-[var(--signed)]" : "text-[var(--refused)]"}>{ok ? "PASS" : "FAIL"}</span>
+      <span className={ok ? "text-[var(--signed)]" : "text-[var(--refused)]"}>{ok ? "✓ PASS" : "✕ FAIL"}</span>
     </motion.li>
+  );
+}
+
+function RunsSkeleton() {
+  return (
+    <div aria-busy="true" className="pt-4">
+      <Skeleton className="h-4 w-16" />
+      <Skeleton className="mt-3 h-12 w-full max-w-lg" />
+      <div className="mt-6 grid gap-2">
+        {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-[73px] w-full" />)}
+      </div>
+    </div>
   );
 }
 
@@ -59,6 +82,12 @@ export default function RunsPage() {
   const now = useNow();
   const events = useVaultEvents(v.vault, v.policyAddress);
   const [open, setOpen] = useState<Hex | null>(null);
+  const [names, setNames] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    const vault = v.vault;
+    if (vault) queueMicrotask(() => setNames(payeeNames(vault)));
+  }, [v.vault]);
 
   const keys = useMemo(
     () => [...new Set((events.data ?? []).filter((e) => e.name === "RunProposed").map((e) => e.args.runKey as Hex))],
@@ -96,11 +125,10 @@ export default function RunsPage() {
   }, [events.data]);
 
   if (!v.isConnected) return <p className="pt-10 text-[16px] text-muted-foreground">Connect your wallet to see runs.</p>;
-  if (v.loading || events.isLoading) return <Skeleton className="mt-6 h-72 w-full rounded-2xl" aria-busy="true" />;
+  if (v.loading || events.isLoading || (keys.length > 0 && details.isLoading)) return <RunsSkeleton />;
   if (!v.hasVault || !v.vault) return <p className="pt-10 text-[16px] text-muted-foreground">Create your vault on the Overview page first.</p>;
 
   const vault = v.vault;
-  const selected = runs.find((r) => r.runKey === open) ?? null;
 
   return (
     <div className="pt-4">
@@ -108,6 +136,7 @@ export default function RunsPage() {
       <h1 className="page-title mt-1">
         Your assistant drafts. <em>You sign.</em>
       </h1>
+      {events.isError && <p role="alert" className="mt-4 text-[14px] text-[var(--refused)]">Could not load runs. Check your connection and reload.</p>}
 
       {runs.length === 0 ? (
         <p className="mt-6 max-w-md text-[16px] text-muted-foreground">
@@ -118,23 +147,39 @@ export default function RunsPage() {
           {runs.map((r) => {
             const chip = CHIP[r.status];
             const proposed = r.events.find((e) => e.name === "RunProposed");
+            const isOpen = open === r.runKey;
+            const { checks, refusal } = checkRun({
+              amounts: r.amounts,
+              total: r.total,
+              status: r.status,
+              payeeCount: r.payeeIds.length,
+              confirmedCount: r.payeeIds.filter((id) => wallets.has(id)).length,
+              policy: v.policy,
+              revoked: v.revoked,
+              paused: v.paused,
+              remaining: v.remaining,
+              now,
+            });
+            const live = r.status === "Proposed" || r.status === "Approved";
+            const refused = live && refusal !== null;
+            const paidTx = r.events.find((e) => e.name === "RunExecuted");
+            const cancelTx = r.events.find((e) => e.name === "RunCancelled");
+            const count = r.payeeIds.length;
+
             return (
               <li
                 key={r.runKey}
-                className={cn(
-                  "border px-4",
-                  open === r.runKey ? "rounded-2xl border-gold/50 bg-card" : "rounded-none border-transparent border-b-border",
-                )}
+                className={cn("border px-4", isOpen ? "rounded-2xl border-[var(--gold)]/50 bg-card" : "rounded-none border-transparent border-b-border")}
               >
                 <button
                   type="button"
-                  onClick={() => setOpen(open === r.runKey ? null : r.runKey)}
-                  aria-expanded={open === r.runKey}
-                  className="flex w-full items-center gap-4 py-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2"
+                  onClick={() => setOpen(isOpen ? null : r.runKey)}
+                  aria-expanded={isOpen}
+                  className="flex min-h-[73px] w-full flex-wrap items-center gap-x-4 gap-y-1 rounded-xl py-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-serif text-[18px]">
-                      Pay {r.payeeIds.length} {r.payeeIds.length === 1 ? "person" : "people"}
+                      Pay {count} {count === 1 ? "person" : "people"}
                     </p>
                     <p className="meta mt-0.5 text-muted-foreground">
                       {proposed ? time(proposed.timestamp) : ""} · {shortHash(r.runKey)}
@@ -143,20 +188,45 @@ export default function RunsPage() {
                   <span className="tnum font-serif text-[18px]">
                     {formatAmount(r.total)} <span className="text-[13px] text-muted-foreground">{TOKEN_SYMBOL}</span>
                   </span>
-                  <span className={`meta rounded-full px-3 py-1 ${chip.cls}`}>{chip.text}</span>
+                  <StatusChip kind={refused ? "refused" : chip.kind}>{refused ? "REFUSED" : chip.text}</StatusChip>
                 </button>
 
-                {selected?.runKey === r.runKey && (
+                {isOpen && (
                   <div className="grid gap-6 pb-6 md:grid-cols-2">
+                    {refused && (
+                      <section role="alert" className="rounded-2xl border border-[var(--refused)]/60 bg-[var(--refused)]/10 p-5 md:col-span-2">
+                        <h2 className="text-[22px] text-[var(--refused)]">Refused by the contract</h2>
+                        <p className="mt-2 text-[16px]">{refusal}</p>
+                      </section>
+                    )}
+
+                    {r.status === "Cancelled" && (
+                      <section className="rounded-2xl border border-[var(--refused)]/40 p-5 md:col-span-2">
+                        <h2 className="text-[22px] text-[var(--refused)]">Cancelled</h2>
+                        <p className="mt-2 text-[16px]">You cancelled this draft. Nothing was paid.</p>
+                        {cancelTx && (
+                          <a href={txUrl(cancelTx.txHash)} target="_blank" rel="noreferrer" className="mt-2 inline-block font-mono text-[12px] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
+                            {shortHash(cancelTx.txHash)}
+                          </a>
+                        )}
+                      </section>
+                    )}
+
                     <section aria-label="Draft" className="panel-dark rounded-2xl border border-border p-5">
                       <p className="text-[16px]">
-                        Pay {r.payeeIds.length} {r.payeeIds.length === 1 ? "person" : "people"}, {formatAmount(r.total)} {TOKEN_SYMBOL} in total.
+                        Pay {count} {count === 1 ? "person" : "people"}, {formatAmount(r.total)} {TOKEN_SYMBOL} in total.
                       </p>
                       <ul className="mt-4 divide-y divide-border">
                         {r.payeeIds.map((id, i) => (
-                          <li key={id} className="flex items-center gap-3 py-2.5">
-                            <Seal address={wallets.get(id)} size={32} className="text-[var(--mist)]" />
-                            <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-[var(--sage)]">{shortHash(id)}</span>
+                          <li key={id} className="flex min-h-[53px] items-center gap-3 py-2.5">
+                            <Seal address={wallets.get(id)} size={32} className="shrink-0 text-[var(--mist)]" />
+                            <span className="min-w-0 flex-1 truncate">
+                              {names.get(id) ? (
+                                <span className="font-serif text-[16px]">{names.get(id)}</span>
+                              ) : (
+                                <span className="font-mono text-[12px] text-[var(--sage)]">{shortHash(id)}</span>
+                              )}
+                            </span>
                             <span className="tnum font-serif text-[16px]">{formatAmount(r.amounts[i])}</span>
                           </li>
                         ))}
@@ -169,49 +239,38 @@ export default function RunsPage() {
                     </section>
 
                     <section aria-label="Checks" className="panel-dark rounded-2xl border border-border p-5">
-                      <h2 className="text-[18px]">Checks the contract enforces</h2>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <h2 className="text-[18px]">Checks the contract enforces</h2>
+                        <span className="meta text-muted-foreground">
+                          {checks.filter((c) => c.ok).length}/{checks.length}
+                        </span>
+                      </div>
                       <ul className="mt-3">
-                        {(() => {
-                          const p = v.policy;
-                          const list: [string, boolean][] = [
-                            ["Confirmed payee", r.payeeIds.every((id) => wallets.has(id))],
-                            ["Per-person cap", !!p && r.amounts.every((a) => a <= p.perPayee)],
-                            ["Per-run cap", !!p && r.total <= p.perRun],
-                            ["Period cap", r.status !== "Proposed" || (v.remaining ?? 0n) >= r.total],
-                            ["Assistant not expired", !v.revoked && !!p && (p.expiry === 0n || Number(p.expiry) > now)],
-                            ["Vault not paused", !v.paused],
-                            ["Not already paid", r.status !== "Executed"],
-                          ];
-                          return list.map(([label, ok], i) => <Check key={label} label={label} ok={ok} i={i} />);
-                        })()}
+                        {checks.map((c, i) => <Check key={c.label} ok={c.ok} label={c.label} i={i} />)}
                       </ul>
                     </section>
 
                     <section aria-label="Timeline" className="panel-dark rounded-2xl border border-border p-5">
-                      <ol className="grid gap-3">
-                        {r.events
-                          .filter((e) => ["RunProposed", "RunApproved", "RunCancelled", "RunExecuted"].includes(e.name))
-                          .map((e) => (
-                            <li key={e.txHash + e.logIndex} className="flex items-baseline gap-3 font-mono text-[12px]">
-                              <span className="text-[var(--sage)]">{time(e.timestamp)}</span>
-                              <a href={txUrl(e.txHash)} target="_blank" rel="noreferrer" className="uppercase underline-offset-4 hover:underline">
-                                {{ RunProposed: "Drafted", RunApproved: "Approved", RunCancelled: "Cancelled", RunExecuted: "Signed and paid" }[e.name]}
-                              </a>
-                            </li>
-                          ))}
-                      </ol>
+                      <EventTimeline withDate={false} events={r.events.filter((e) => e.name in STEP_NAME)} label={(e) => STEP_NAME[e.name]} />
                     </section>
 
-                    <section aria-label="Actions" className="flex flex-wrap items-start gap-3">
+                    <section aria-label="Actions" className="flex flex-wrap items-start gap-3 self-start">
                       {r.status === "Executed" && (
-                        <div>
-                          <SignatureMark name="Approved" className="text-[44px] text-[var(--forest-900)] dark:text-[var(--gold)]" />
-                          <p className="font-mono text-[11px] text-muted-foreground">Signed and paid · {formatAmount(r.total)} {TOKEN_SYMBOL}</p>
+                        <div className="grid gap-1">
+                          <SignatureMark name={v.address ? shortAddress(v.address) : "Signed"} className="text-[44px] text-[var(--forest-900)] dark:text-[var(--gold)]" />
+                          <p className="font-mono text-[11px] text-muted-foreground">
+                            Signed and paid · {formatAmount(r.total)} {TOKEN_SYMBOL}
+                          </p>
+                          {paidTx && (
+                            <a href={txUrl(paidTx.txHash)} target="_blank" rel="noreferrer" className="w-fit font-mono text-[12px] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
+                              {shortHash(paidTx.txHash)}
+                            </a>
+                          )}
                         </div>
                       )}
                       {r.status === "Proposed" && (
                         <>
-                          <Button className="rounded-full" onClick={() => tx("Approve run", { address: vault, abi: payrollVaultAbi, functionName: "approveRun", args: [r.runKey] })}>
+                          <Button className="rounded-full" disabled={refused} onClick={() => tx("Approve run", { address: vault, abi: payrollVaultAbi, functionName: "approveRun", args: [r.runKey] })}>
                             Approve
                           </Button>
                           <Button variant="outline" className="rounded-full" onClick={() => tx("Cancel run", { address: vault, abi: payrollVaultAbi, functionName: "cancelRun", args: [r.runKey] })}>
@@ -223,15 +282,20 @@ export default function RunsPage() {
                         <>
                           <Button
                             className="rounded-full"
-                            disabled={now < r.executableAt}
+                            disabled={now === 0 || now < r.executableAt || refused}
                             onClick={() => tx("Sign and pay", { address: vault, abi: payrollVaultAbi, functionName: "executeRun", args: [r.runKey] })}
                           >
                             Sign and pay
                           </Button>
-                          <p className="meta self-center text-muted-foreground">
-                            {now < r.executableAt ? `Review window: ${formatDuration(r.executableAt - now)} left` : "Review window closed"}
-                          </p>
+                          <Button variant="outline" className="rounded-full" onClick={() => tx("Cancel run", { address: vault, abi: payrollVaultAbi, functionName: "cancelRun", args: [r.runKey] })}>
+                            Cancel
+                          </Button>
                         </>
+                      )}
+                      {live && now > 0 && (
+                        <p className="meta w-full text-muted-foreground">
+                          {now < r.executableAt ? `Review window: ${formatDuration(r.executableAt - now)} left` : "Review window closed"}
+                        </p>
                       )}
                     </section>
                   </div>
