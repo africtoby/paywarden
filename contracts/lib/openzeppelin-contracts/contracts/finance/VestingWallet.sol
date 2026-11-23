@@ -1,16 +1,12 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.6.0) (finance/VestingWallet.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (finance/VestingWallet.sol)
+pragma solidity ^0.8.20;
 
-pragma solidity ^0.8.31;
-
-import {Ownable} from "../access/Ownable.sol";
-import {IERC6372} from "../interfaces/IERC6372.sol";
 import {IERC20} from "../token/ERC20/IERC20.sol";
 import {SafeERC20} from "../token/ERC20/utils/SafeERC20.sol";
 import {Address} from "../utils/Address.sol";
 import {Context} from "../utils/Context.sol";
-import {ERC6372Utils} from "../utils/ERC6372Utils.sol";
-import {Time} from "../utils/types/Time.sol";
+import {Ownable} from "../access/Ownable.sol";
 
 /**
  * @dev A vesting wallet is an ownable contract that can receive native currency and ERC-20 tokens, and release these
@@ -20,11 +16,8 @@ import {Time} from "../utils/types/Time.sol";
  * Consequently, if the vesting has already started, any amount of tokens sent to this contract will (at least partly)
  * be immediately releasable.
  *
- * By setting the duration to 0, one can configure this contract to behave like an asset timelock that holds tokens for
+ * By setting the duration to 0, one can configure this contract to behave like an asset timelock that hold tokens for
  * a beneficiary until a specified time.
- *
- * NOTE: The vesting schedule uses {clock}, which defaults to timestamps. If overriding the clock, also override
- * {CLOCK_MODE} and express the start, duration, and any cliff in the same unit as the clock.
  *
  * NOTE: Since the wallet is {Ownable}, and ownership can be transferred, it is possible to sell unvested tokens.
  * Preventing this in a smart contract is difficult, considering that: 1) a beneficiary address could be a
@@ -33,13 +26,8 @@ import {Time} from "../utils/types/Time.sol";
  *
  * NOTE: When using this contract with any token whose balance is adjusted automatically (i.e. a rebase token), make
  * sure to account the supply/balance adjustment in the vesting schedule to ensure the vested amount is as intended.
- *
- * NOTE: Chains with support for native ERC20s may allow the vesting wallet to withdraw the underlying asset as both an
- * ERC20 and as native currency. For example, if chain C supports token A and the wallet gets deposited 100 A, then
- * at 50% of the vesting period, the beneficiary can withdraw 50 A as ERC20 and 25 A as native currency (totaling 75 A).
- * Consider disabling one of the withdrawal methods.
  */
-contract VestingWallet is Context, Ownable, IERC6372 {
+contract VestingWallet is Context, Ownable {
     event EtherReleased(uint256 amount);
     event ERC20Released(address indexed token, uint256 amount);
 
@@ -52,20 +40,9 @@ contract VestingWallet is Context, Ownable, IERC6372 {
      * @dev Sets the beneficiary (owner), the start timestamp and the vesting duration (in seconds) of the vesting
      * wallet.
      */
-    constructor(address beneficiary, uint64 start_, uint64 duration_) payable Ownable(beneficiary) {
-        _start = start_;
-        _duration = duration_;
-    }
-
-    /// @inheritdoc IERC6372
-    function clock() public view virtual returns (uint48) {
-        return Time.timestamp();
-    }
-
-    /// @inheritdoc IERC6372
-    // solhint-disable-next-line func-name-mixedcase
-    function CLOCK_MODE() public view virtual returns (string memory) {
-        return ERC6372Utils.timestampClockMode(clock());
+    constructor(address beneficiary, uint64 startTimestamp, uint64 durationSeconds) payable Ownable(beneficiary) {
+        _start = startTimestamp;
+        _duration = durationSeconds;
     }
 
     /**
@@ -112,7 +89,7 @@ contract VestingWallet is Context, Ownable, IERC6372 {
      * @dev Getter for the amount of releasable eth.
      */
     function releasable() public view virtual returns (uint256) {
-        return vestedAmount(clock()) - released();
+        return vestedAmount(uint64(block.timestamp)) - released();
     }
 
     /**
@@ -120,11 +97,11 @@ contract VestingWallet is Context, Ownable, IERC6372 {
      * {IERC20} contract.
      */
     function releasable(address token) public view virtual returns (uint256) {
-        return vestedAmount(token, clock()) - released(token);
+        return vestedAmount(token, uint64(block.timestamp)) - released(token);
     }
 
     /**
-     * @dev Release the native tokens (ether) that have already vested.
+     * @dev Release the native token (ether) that have already vested.
      *
      * Emits a {EtherReleased} event.
      */

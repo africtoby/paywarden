@@ -1,6 +1,8 @@
 PayWarden
 Third-party dependencies and licences (updated as they are added):
 
-- OpenZeppelin Contracts - MIT - github.com/OpenZeppelin/openzeppelin-contracts
+- OpenZeppelin Contracts v5.1.0 - MIT - github.com/OpenZeppelin/openzeppelin-contracts
 - forge-std - MIT OR Apache-2.0 - github.com/foundry-rs/forge-std
 - ERC-8004 IdentityRegistry reference (github.com/erc-8004/erc-8004-contracts) - MIT (contract file) / CC0 (repo) - PayWarden's IdentityRegistry.sol is an independent, non-upgradeable implementation of the same interface; no code copied
+- Web app: Next.js, wagmi, viem, RainbowKit, TanStack Query, Framer Motion, Sonner, Tailwind CSS, Base UI, next-themes - MIT; lucide-react - ISC; shadcn/ui component patterns - MIT
+- Agent: viem, zod, vitest, tsx - MIT; dotenv - BSD-2-Clause

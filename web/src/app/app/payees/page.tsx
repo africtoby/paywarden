@@ -52,6 +52,7 @@ export default function PayeesPage() {
     const m = new Map<string, Address>();
     for (const e of events.data ?? []) {
       if (e.name === "PayeeConfirmed") m.set(String(e.args.payeeId), e.args.wallet as Address);
+      if (e.name === "PayeeRevoked") m.delete(String(e.args.payeeId));
     }
     return m;
   }, [events.data]);
@@ -76,6 +77,13 @@ export default function PayeesPage() {
       toast.warning("Copy the invite link now: this browser could not save it.");
     }
     setName("");
+  };
+
+  const unlink = async (i: Invite) => {
+    if (!v.vault) return;
+    setBusy(true);
+    await tx(`Unlink ${i.name}'s wallet`, { address: v.vault, abi: payrollVaultAbi, functionName: "revokePayee", args: [i.id] });
+    setBusy(false);
   };
 
   const copy = async (i: Invite) => {
@@ -173,6 +181,11 @@ export default function PayeesPage() {
                       )}
                     </div>
                     <StatusChip kind={wallet ? "signed" : "awaiting"}>{wallet ? "Confirmed" : "Invited"}</StatusChip>
+                    {wallet && (
+                      <Button variant="outline" size="sm" className="rounded-full" disabled={busy} onClick={() => unlink(i)}>
+                        Unlink wallet
+                      </Button>
+                    )}
                     {!wallet && (
                       <Button variant="outline" size="sm" className="min-w-[148px] rounded-full" onClick={() => copy(i)}>
                         <AnimatePresence mode="wait" initial={false}>

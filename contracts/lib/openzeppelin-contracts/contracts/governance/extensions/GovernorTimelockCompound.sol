@@ -1,34 +1,28 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.7.0) (governance/extensions/GovernorTimelockCompound.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (governance/extensions/GovernorTimelockCompound.sol)
 
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.20;
 
+import {IGovernor, Governor} from "../Governor.sol";
+import {ICompoundTimelock} from "../../vendor/compound/ICompoundTimelock.sol";
 import {Address} from "../../utils/Address.sol";
 import {SafeCast} from "../../utils/math/SafeCast.sol";
-import {ICompoundTimelock} from "../../vendor/compound/ICompoundTimelock.sol";
-import {IGovernor, Governor} from "../Governor.sol";
 
 /**
  * @dev Extension of {Governor} that binds the execution process to a Compound Timelock. This adds a delay, enforced by
- * the external timelock to all successful proposals (in addition to the voting duration). The {Governor} needs to be
+ * the external timelock to all successful proposal (in addition to the voting duration). The {Governor} needs to be
  * the admin of the timelock for any operation to be performed. A public, unrestricted,
  * {GovernorTimelockCompound-__acceptAdmin} is available to accept ownership of the timelock.
  *
- * Using this model means the proposal will be operated by the {ICompoundTimelock} and not by the {Governor}. Thus,
- * the assets and permissions must be attached to the {ICompoundTimelock}. Any asset sent to the {Governor} will be
+ * Using this model means the proposal will be operated by the {TimelockController} and not by the {Governor}. Thus,
+ * the assets and permissions must be attached to the {TimelockController}. Any asset sent to the {Governor} will be
  * inaccessible from a proposal, unless executed via {Governor-relay}.
- *
- * WARNING: The Compound timelock identifies each queued transaction by the hash of its target, value, signature,
- * calldata and eta. A proposal containing two actions with identical target, value and calldata will therefore
- * revert in {Governor-queue} with `GovernorAlreadyQueuedProposal` after the vote has succeeded, and can never be
- * executed. To repeat a call within a proposal, make each action unique, for example by appending distinct trailing
- * bytes to the calldata of targets that ignore them.
  */
 abstract contract GovernorTimelockCompound is Governor {
     ICompoundTimelock private _timelock;
 
     /**
-     * @dev Emitted when the timelock used for proposal execution is modified.
+     * @dev Emitted when the timelock controller used for proposal execution is modified.
      */
     event TimelockChange(address oldTimelock, address newTimelock);
 
@@ -59,7 +53,9 @@ abstract contract GovernorTimelockCompound is Governor {
         return address(_timelock);
     }
 
-    /// @inheritdoc IGovernor
+    /**
+     * @dev See {IGovernor-proposalNeedsQueuing}.
+     */
     function proposalNeedsQueuing(uint256) public view virtual override returns (bool) {
         return true;
     }
@@ -77,15 +73,11 @@ abstract contract GovernorTimelockCompound is Governor {
         uint48 etaSeconds = SafeCast.toUint48(block.timestamp + _timelock.delay());
 
         for (uint256 i = 0; i < targets.length; ++i) {
-            // The timelock keys transactions by hash(target, value, signature, data, eta) and all actions within a proposal
-            // share `etaSeconds`. This reverts if the proposal repeats an action (permanent, see the contract-level warning)
-            // or if an identical action from another proposal was queued at the same timestamp (retryable later).
-            require(
-                !_timelock.queuedTransactions(
-                    keccak256(abi.encode(targets[i], values[i], "", calldatas[i], etaSeconds))
-                ),
-                GovernorAlreadyQueuedProposal(proposalId)
-            );
+            if (
+                _timelock.queuedTransactions(keccak256(abi.encode(targets[i], values[i], "", calldatas[i], etaSeconds)))
+            ) {
+                revert GovernorAlreadyQueuedProposal(proposalId);
+            }
             _timelock.queueTransaction(targets[i], values[i], "", calldatas[i], etaSeconds);
         }
 
@@ -104,6 +96,9 @@ abstract contract GovernorTimelockCompound is Governor {
         bytes32 /*descriptionHash*/
     ) internal virtual override {
         uint256 etaSeconds = proposalEta(proposalId);
+        if (etaSeconds == 0) {
+            revert GovernorNotQueuedProposal(proposalId);
+        }
         Address.sendValue(payable(_timelock), msg.value);
         for (uint256 i = 0; i < targets.length; ++i) {
             _timelock.executeTransaction(targets[i], values[i], "", calldatas[i], etaSeconds);
@@ -143,7 +138,7 @@ abstract contract GovernorTimelockCompound is Governor {
     /**
      * @dev Accept admin right over the timelock.
      */
-    // solhint-disable-next-line openzeppelin/leading-underscore
+    // solhint-disable-next-line private-vars-leading-underscore
     function __acceptAdmin() public {
         _timelock.acceptAdmin();
     }
@@ -161,7 +156,7 @@ abstract contract GovernorTimelockCompound is Governor {
 
      * CAUTION: It is not recommended to change the timelock while there are other queued governance proposals.
      */
-    function updateTimelock(ICompoundTimelock newTimelock) public virtual onlyGovernance {
+    function updateTimelock(ICompoundTimelock newTimelock) external virtual onlyGovernance {
         _updateTimelock(newTimelock);
     }
 

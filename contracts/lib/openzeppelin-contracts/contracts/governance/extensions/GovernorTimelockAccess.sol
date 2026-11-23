@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.4.0) (governance/extensions/GovernorTimelockAccess.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (governance/extensions/GovernorTimelockAccess.sol)
 
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.20;
 
+import {Governor} from "../Governor.sol";
 import {AuthorityUtils} from "../../access/manager/AuthorityUtils.sol";
 import {IAccessManager} from "../../access/manager/IAccessManager.sol";
 import {Address} from "../../utils/Address.sol";
 import {Math} from "../../utils/math/Math.sol";
 import {SafeCast} from "../../utils/math/SafeCast.sol";
 import {Time} from "../../utils/types/Time.sol";
-import {IGovernor, Governor} from "../Governor.sol";
 
 /**
  * @dev This module connects a {Governor} instance to an {AccessManager} instance, allowing the governor to make calls
@@ -142,7 +142,9 @@ abstract contract GovernorTimelockAccess is Governor {
      */
     function _setAccessManagerIgnored(address target, bytes4 selector, bool ignored) internal virtual {
         bool isGovernor = target == address(this);
-        require(!isGovernor || selector != this.setAccessManagerIgnored.selector, GovernorLockedIgnore());
+        if (isGovernor && selector == this.setAccessManagerIgnored.selector) {
+            revert GovernorLockedIgnore();
+        }
         _ignoreToggle[target][selector] = ignored != isGovernor; // equivalent to: isGovernor ? !ignored : ignored
         emit AccessManagerIgnoredSet(target, selector, ignored);
     }
@@ -169,12 +171,16 @@ abstract contract GovernorTimelockAccess is Governor {
         return (delay, indirect, withDelay);
     }
 
-    /// @inheritdoc IGovernor
+    /**
+     * @dev See {IGovernor-proposalNeedsQueuing}.
+     */
     function proposalNeedsQueuing(uint256 proposalId) public view virtual override returns (bool) {
         return _executionPlan[proposalId].delay > 0;
     }
 
-    /// @inheritdoc IGovernor
+    /**
+     * @dev See {IGovernor-propose}
+     */
     function propose(
         address[] memory targets,
         uint256[] memory values,
@@ -231,9 +237,6 @@ abstract contract GovernorTimelockAccess is Governor {
         for (uint256 i = 0; i < targets.length; ++i) {
             (, bool withDelay, ) = _getManagerData(plan, i);
             if (withDelay) {
-                // This function can reenter when calling `_manager.schedule` before performing state updates in `_setManagerData`.
-                // However, the `manager` is a trusted contract in the current context's security model (e.g. an `AccessManager`).
-                // slither-disable-next-line reentrancy-no-eth
                 (, uint32 nonce) = _manager.schedule(targets[i], calldatas[i], etaSeconds);
                 _setManagerData(plan, i, true, nonce);
             }
@@ -253,7 +256,9 @@ abstract contract GovernorTimelockAccess is Governor {
         bytes32 /* descriptionHash */
     ) internal virtual override {
         uint48 etaSeconds = SafeCast.toUint48(proposalEta(proposalId));
-        require(block.timestamp >= etaSeconds, GovernorUnmetDelay(proposalId, etaSeconds));
+        if (block.timestamp < etaSeconds) {
+            revert GovernorUnmetDelay(proposalId, etaSeconds);
+        }
 
         ExecutionPlan storage plan = _executionPlan[proposalId];
 
@@ -261,10 +266,9 @@ abstract contract GovernorTimelockAccess is Governor {
             (bool controlled, bool withDelay, uint32 nonce) = _getManagerData(plan, i);
             if (controlled) {
                 uint32 executedNonce = _manager.execute{value: values[i]}(targets[i], calldatas[i]);
-                require(
-                    !withDelay || executedNonce == nonce,
-                    GovernorMismatchedNonce(proposalId, nonce, executedNonce)
-                );
+                if (withDelay && executedNonce != nonce) {
+                    revert GovernorMismatchedNonce(proposalId, nonce, executedNonce);
+                }
             } else {
                 (bool success, bytes memory returndata) = targets[i].call{value: values[i]}(calldatas[i]);
                 Address.verifyCallResult(success, returndata);
@@ -272,7 +276,9 @@ abstract contract GovernorTimelockAccess is Governor {
         }
     }
 
-    /// @inheritdoc Governor
+    /**
+     * @dev See {IGovernor-_cancel}
+     */
     function _cancel(
         address[] memory targets,
         uint256[] memory values,

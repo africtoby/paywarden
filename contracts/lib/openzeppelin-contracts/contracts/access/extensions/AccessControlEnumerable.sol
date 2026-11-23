@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.7.0) (access/extensions/AccessControlEnumerable.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (access/extensions/AccessControlEnumerable.sol)
 
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.20;
 
-import {IERC165} from "../../utils/introspection/ERC165.sol";
-import {EnumerableSet} from "../../utils/structs/EnumerableSet.sol";
-import {AccessControl} from "../AccessControl.sol";
 import {IAccessControlEnumerable} from "./IAccessControlEnumerable.sol";
+import {AccessControl} from "../AccessControl.sol";
+import {EnumerableSet} from "../../utils/structs/EnumerableSet.sol";
 
 /**
  * @dev Extension of {AccessControl} that allows enumerating the members of each role.
@@ -16,7 +15,9 @@ abstract contract AccessControlEnumerable is IAccessControlEnumerable, AccessCon
 
     mapping(bytes32 role => EnumerableSet.AddressSet) private _roleMembers;
 
-    /// @inheritdoc IERC165
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IAccessControlEnumerable).interfaceId || super.supportsInterface(interfaceId);
     }
@@ -34,7 +35,7 @@ abstract contract AccessControlEnumerable is IAccessControlEnumerable, AccessCon
      * for more information.
      */
     function getRoleMember(bytes32 role, uint256 index) public view virtual returns (address) {
-        return _roleMembers[role].pos(index);
+        return _roleMembers[role].at(index);
     }
 
     /**

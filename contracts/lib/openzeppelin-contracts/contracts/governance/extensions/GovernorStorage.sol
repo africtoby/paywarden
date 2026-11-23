@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.6.0) (governance/extensions/GovernorStorage.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (governance/extensions/GovernorStorage.sol)
 
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.20;
 
 import {Governor} from "../Governor.sol";
 
 /**
- * @dev Extension of {Governor} that implements storage of proposal details. This module also provides primitives for
+ * @dev Extension of {Governor} that implements storage of proposal details. This modules also provides primitives for
  * the enumerability of proposals.
  *
  * Use cases for this module include:
@@ -50,12 +50,11 @@ abstract contract GovernorStorage is Governor {
     }
 
     /**
-     * @dev Version of {IGovernor-queue} with only `proposalId` as an argument.
+     * @dev Version of {IGovernorTimelock-queue} with only `proposalId` as an argument.
      */
     function queue(uint256 proposalId) public virtual {
         // here, using storage is more efficient than memory
         ProposalDetails storage details = _proposalDetails[proposalId];
-        require(details.descriptionHash != 0, GovernorNonexistentProposal(proposalId));
         queue(details.targets, details.values, details.calldatas, details.descriptionHash);
     }
 
@@ -65,7 +64,6 @@ abstract contract GovernorStorage is Governor {
     function execute(uint256 proposalId) public payable virtual {
         // here, using storage is more efficient than memory
         ProposalDetails storage details = _proposalDetails[proposalId];
-        require(details.descriptionHash != 0, GovernorNonexistentProposal(proposalId));
         execute(details.targets, details.values, details.calldatas, details.descriptionHash);
     }
 
@@ -75,7 +73,6 @@ abstract contract GovernorStorage is Governor {
     function cancel(uint256 proposalId) public virtual {
         // here, using storage is more efficient than memory
         ProposalDetails storage details = _proposalDetails[proposalId];
-        require(details.descriptionHash != 0, GovernorNonexistentProposal(proposalId));
         cancel(details.targets, details.values, details.calldatas, details.descriptionHash);
     }
 
@@ -99,7 +96,9 @@ abstract contract GovernorStorage is Governor {
     {
         // here, using memory is more efficient than storage
         ProposalDetails memory details = _proposalDetails[proposalId];
-        require(details.descriptionHash != 0, GovernorNonexistentProposal(proposalId));
+        if (details.descriptionHash == 0) {
+            revert GovernorNonexistentProposal(proposalId);
+        }
         return (details.targets, details.values, details.calldatas, details.descriptionHash);
     }
 

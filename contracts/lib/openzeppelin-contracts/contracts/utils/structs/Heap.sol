@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.7.0) (utils/structs/Heap.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (utils/structs/Heap.sol)
 
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.20;
 
-import {Arrays} from "../Arrays.sol";
-import {Comparators} from "../Comparators.sol";
 import {Math} from "../math/Math.sol";
+import {SafeCast} from "../math/SafeCast.sol";
+import {Comparators} from "../Comparators.sol";
+import {Arrays} from "../Arrays.sol";
 import {Panic} from "../Panic.sol";
 import {StorageSlot} from "../StorageSlot.sol";
 
@@ -17,10 +18,9 @@ import {StorageSlot} from "../StorageSlot.sol";
  * index i is the child of the node at index (i-1)/2 and the parent of nodes at index 2*i+1 and 2*i+2. Each node
  * stores an element of the heap.
  *
- * The structure is ordered so that, per the comparator, each node has lower priority than its parent; as a
- * consequence, the highest-priority value is at the root. This value can be looked up in constant time (O(1)) at
- * `heap.tree[0]`. By default, the comparator is `Comparators.lt`, which treats smaller values as higher priority
- * (min-heap). Using `Comparators.gt` yields a max-heap.
+ * The structure is ordered so that each node is bigger than its parent. An immediate consequence is that the
+ * highest priority value is the one at the root. This value can be looked up in constant time (O(1)) at
+ * `heap.tree[0]`
  *
  * The structure is designed to perform the following operations with the corresponding complexities:
  *
@@ -40,6 +40,7 @@ import {StorageSlot} from "../StorageSlot.sol";
 library Heap {
     using Arrays for *;
     using Math for *;
+    using SafeCast for *;
 
     /**
      * @dev Binary heap that supports values of type uint256.
@@ -84,17 +85,13 @@ library Heap {
 
             // cache
             uint256 rootValue = self.tree.unsafeAccess(0).value;
-            if (size == 1) {
-                self.tree.pop();
-            } else {
-                // swap last leaf with root ...
-                uint256 lastValue = self.tree.unsafeAccess(size - 1).value;
-                self.tree.unsafeAccess(0).value = lastValue;
-                // ... shrink tree ...
-                self.tree.pop();
-                // ... re-heapify
-                _siftDown(self, size - 1, 0, lastValue, comp);
-            }
+            uint256 lastValue = self.tree.unsafeAccess(size - 1).value;
+
+            // swap last leaf with root, shrink tree and re-heapify
+            self.tree.pop();
+            self.tree.unsafeAccess(0).value = lastValue;
+            _siftDown(self, size - 1, 0, lastValue, comp);
+
             return rootValue;
         }
     }
@@ -211,7 +208,7 @@ library Heap {
             uint256 rIndex = 2 * index + 2;
 
             // Three cases:
-            // 1. Both children exist: sifting may continue on one of the branches (selection required)
+            // 1. Both children exist: sifting may continue on one of the branch (selection required)
             // 2. Only left child exist: sifting may continue on the left branch (no selection required)
             // 3. Neither child exist: sifting is done
             if (rIndex < size) {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { encodeAbiParameters, keccak256, toHex } from "viem";
+import { encodeAbiParameters, isAddress, keccak256, toHex } from "viem";
 import { formatAmount, formatDuration, parseAmount } from "./format";
 import { inviteLink, payeeId, randomSalt } from "./payee";
 import { explainRevert, MESSAGES } from "./errors";
-import { payrollVaultAbi, agentSpendPolicyAbi } from "./contracts";
+import { ADDRESSES, payrollVaultAbi, agentSpendPolicyAbi } from "./contracts";
 import { evaluateDraft, type DemoPolicy } from "./demo-rules";
 import { checkRun } from "./run-checks";
 import { permissionParts, permissionSentence } from "./assistant-sentence";
@@ -143,5 +143,11 @@ describe("motion helpers", () => {
     const parts = permissionParts(input);
     expect(parts.map((p) => p.text).join("")).toBe(permissionSentence(input));
     expect(parts.filter((p) => p.value).map((p) => p.text).slice(0, 3)).toEqual(["800", "2,000", "5,000"]);
+  });
+});
+
+describe("deployed addresses", () => {
+  it("are valid checksummed addresses", () => {
+    for (const addr of Object.values(ADDRESSES)) expect(isAddress(addr)).toBe(true);
   });
 });

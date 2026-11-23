@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// This file was procedurally generated from scripts/generate/templates/StorageSlotMock.sol.eta.
+// This file was procedurally generated from scripts/generate/templates/StorageSlotMock.js.
 
 pragma solidity ^0.8.20;
 

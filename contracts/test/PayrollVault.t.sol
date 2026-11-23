@@ -97,6 +97,62 @@ contract PayrollVaultTest is Base {
         vault.confirmPayee("Alice2", keccak256("a2"));
     }
 
+    function test_revoke_payee_unlinks_and_allows_reconfirm() public {
+        vm.prank(employer);
+        vault.revokePayee(aliceId);
+        assertEq(vault.payeeWallet(aliceId), address(0));
+        assertEq(vault.walletPayee(alice), bytes32(0));
+        assertTrue(vault.invited(aliceId));
+
+        vm.prank(stranger);
+        vault.confirmPayee("Alice", ALICE_SALT);
+        assertEq(vault.payeeWallet(aliceId), stranger);
+    }
+
+    function test_revoke_payee_emits_event() public {
+        vm.expectEmit(true, true, false, false);
+        emit PayrollVault.PayeeRevoked(aliceId, alice);
+        vm.prank(employer);
+        vault.revokePayee(aliceId);
+    }
+
+    function test_revoke_payee_only_owner() public {
+        vm.prank(stranger);
+        vm.expectRevert();
+        vault.revokePayee(aliceId);
+    }
+
+    function test_revoke_unconfirmed_payee_reverts() public {
+        bytes32 id = vault.commitmentOf("Dan", keccak256("d"));
+        _invite(id);
+        vm.prank(employer);
+        vm.expectRevert(abi.encodeWithSelector(PayrollVault.PayeeNotConfirmed.selector, id));
+        vault.revokePayee(id);
+    }
+
+    function test_propose_after_revoke_reverts() public {
+        vm.prank(employer);
+        vault.revokePayee(aliceId);
+        vm.prank(agent);
+        vm.expectRevert(abi.encodeWithSelector(PayrollVault.PayeeNotConfirmed.selector, aliceId));
+        vault.proposeRun(_ids(aliceId, bobId), _amts(1 * USD, 1 * USD), keccak256("memo"));
+    }
+
+    function test_execute_after_revoke_reverts_and_keeps_funds() public {
+        bytes32 key = _propose(1_000 * USD, 2_000 * USD);
+        vm.startPrank(employer);
+        vault.approveRun(key);
+        vault.revokePayee(aliceId);
+        vm.stopPrank();
+        vm.warp(block.timestamp + WINDOW);
+        uint256 before = token.balanceOf(address(vault));
+        vm.prank(employer);
+        vm.expectRevert(abi.encodeWithSelector(PayrollVault.PayeeNotConfirmed.selector, aliceId));
+        vault.executeRun(key);
+        assertEq(token.balanceOf(address(vault)), before);
+        assertEq(uint8(vault.runStatus(key)), uint8(PayrollVault.Status.Approved));
+    }
+
     function test_register_agent_identity() public {
         vm.prank(employer);
         uint256 idn = vault.registerAgentIdentity();

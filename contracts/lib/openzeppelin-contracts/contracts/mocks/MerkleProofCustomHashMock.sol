@@ -4,7 +4,8 @@ pragma solidity ^0.8.20;
 
 import {MerkleProof} from "../utils/cryptography/MerkleProof.sol";
 
-library MerkleProofCustomHashMock {
+// This could be a library, but then we would have to add it to the Stateless.sol mock for upgradeable tests
+abstract contract MerkleProofCustomHashMock {
     function customHash(bytes32 a, bytes32 b) internal pure returns (bytes32) {
         return a < b ? sha256(abi.encode(a, b)) : sha256(abi.encode(b, a));
     }

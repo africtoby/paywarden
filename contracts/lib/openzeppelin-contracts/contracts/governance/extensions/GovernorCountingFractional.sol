@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.4.0) (governance/extensions/GovernorCountingFractional.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (governance/extensions/GovernorCountingFractional.sol)
 
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.20;
 
-import {Math} from "../../utils/math/Math.sol";
-import {IGovernor, Governor} from "../Governor.sol";
+import {Governor} from "../Governor.sol";
 import {GovernorCountingSimple} from "./GovernorCountingSimple.sol";
+import {Math} from "../../utils/math/Math.sol";
 
 /**
  * @dev Extension of {Governor} for fractional voting.
@@ -27,7 +27,7 @@ import {GovernorCountingSimple} from "./GovernorCountingSimple.sol";
  * * Voting from an L2 with tokens held by a bridge
  * * Voting privately from a shielded pool using zero knowledge proofs.
  *
- * Based on ScopeLift's https://github.com/ScopeLift/flexible-voting/blob/e5de2efd1368387b840931f19f3c184c85842761/src/GovernorCountingFractional.sol[`GovernorCountingFractional`]
+ * Based on ScopeLift's GovernorCountingFractional[https://github.com/ScopeLift/flexible-voting/blob/e5de2efd1368387b840931f19f3c184c85842761/src/GovernorCountingFractional.sol]
  *
  * _Available since v5.1._
  */
@@ -53,13 +53,17 @@ abstract contract GovernorCountingFractional is Governor {
      */
     error GovernorExceedRemainingWeight(address voter, uint256 usedVotes, uint256 remainingWeight);
 
-    /// @inheritdoc IGovernor
+    /**
+     * @dev See {IGovernor-COUNTING_MODE}.
+     */
     // solhint-disable-next-line func-name-mixedcase
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "support=bravo,fractional&quorum=for,abstain&params=fractional";
     }
 
-    /// @inheritdoc IGovernor
+    /**
+     * @dev See {IGovernor-hasVoted}.
+     */
     function hasVoted(uint256 proposalId, address account) public view virtual override returns (bool) {
         return usedVotes(proposalId, account) > 0;
     }
@@ -82,7 +86,9 @@ abstract contract GovernorCountingFractional is Governor {
         return (proposalVote.againstVotes, proposalVote.forVotes, proposalVote.abstainVotes);
     }
 
-    /// @inheritdoc Governor
+    /**
+     * @dev See {Governor-_quorumReached}.
+     */
     function _quorumReached(uint256 proposalId) internal view virtual override returns (bool) {
         ProposalVote storage proposalVote = _proposalVotes[proposalId];
         return quorum(proposalSnapshot(proposalId)) <= proposalVote.forVotes + proposalVote.abstainVotes;
@@ -119,9 +125,9 @@ abstract contract GovernorCountingFractional is Governor {
      *
      * `abi.encodePacked(uint128(againstVotes), uint128(forVotes), uint128(abstainVotes))`
      *
-     * NOTE: Consider that fractional voting restricts the number of casted votes (in each category) to 128 bits.
+     * NOTE: Consider that fractional voting restricts the number of casted vote (in each category) to 128 bits.
      * Depending on how many decimals the underlying token has, a single voter may require to split their vote into
-     * multiple vote operations. For precision higher than ~30 decimals, large token holders may require a
+     * multiple vote operations. For precision higher than ~30 decimals, large token holders may require an
      * potentially large number of calls to cast all their votes. The voter has the possibility to cast all the
      * remaining votes in a single operation using the traditional "bravo" vote.
      */
@@ -135,7 +141,9 @@ abstract contract GovernorCountingFractional is Governor {
     ) internal virtual override returns (uint256) {
         // Compute number of remaining votes. Returns 0 on overflow.
         (, uint256 remainingWeight) = totalWeight.trySub(usedVotes(proposalId, account));
-        require(remainingWeight != 0, GovernorAlreadyCastVote(account));
+        if (remainingWeight == 0) {
+            revert GovernorAlreadyCastVote(account);
+        }
 
         uint256 againstVotes = 0;
         uint256 forVotes = 0;
@@ -148,18 +156,18 @@ abstract contract GovernorCountingFractional is Governor {
         // - "Full" voting: `support = 0` (Against), `1` (For) or `2` (Abstain), with empty params.
         // - "Fractional" voting: `support = 255`, with 48 bytes params.
         if (support == uint8(GovernorCountingSimple.VoteType.Against)) {
-            require(params.length == 0, GovernorInvalidVoteParams());
+            if (params.length != 0) revert GovernorInvalidVoteParams();
             usedWeight = againstVotes = remainingWeight;
         } else if (support == uint8(GovernorCountingSimple.VoteType.For)) {
-            require(params.length == 0, GovernorInvalidVoteParams());
+            if (params.length != 0) revert GovernorInvalidVoteParams();
             usedWeight = forVotes = remainingWeight;
         } else if (support == uint8(GovernorCountingSimple.VoteType.Abstain)) {
-            require(params.length == 0, GovernorInvalidVoteParams());
+            if (params.length != 0) revert GovernorInvalidVoteParams();
             usedWeight = abstainVotes = remainingWeight;
         } else if (support == VOTE_TYPE_FRACTIONAL) {
             // The `params` argument is expected to be three packed `uint128`:
             // `abi.encodePacked(uint128(againstVotes), uint128(forVotes), uint128(abstainVotes))`
-            require(params.length == 0x30, GovernorInvalidVoteParams());
+            if (params.length != 0x30) revert GovernorInvalidVoteParams();
 
             assembly ("memory-safe") {
                 againstVotes := shr(128, mload(add(params, 0x20)))
@@ -169,7 +177,9 @@ abstract contract GovernorCountingFractional is Governor {
             }
 
             // check parsed arguments are valid
-            require(usedWeight <= remainingWeight, GovernorExceedRemainingWeight(account, usedWeight, remainingWeight));
+            if (usedWeight > remainingWeight) {
+                revert GovernorExceedRemainingWeight(account, usedWeight, remainingWeight);
+            }
         } else {
             revert GovernorInvalidVoteType();
         }

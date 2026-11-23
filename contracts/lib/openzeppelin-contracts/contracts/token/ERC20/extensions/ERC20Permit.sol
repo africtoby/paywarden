@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.5.0) (token/ERC20/extensions/ERC20Permit.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (token/ERC20/extensions/ERC20Permit.sol)
 
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.20;
 
+import {IERC20Permit} from "./IERC20Permit.sol";
+import {ERC20} from "../ERC20.sol";
 import {ECDSA} from "../../../utils/cryptography/ECDSA.sol";
 import {EIP712} from "../../../utils/cryptography/EIP712.sol";
 import {Nonces} from "../../../utils/Nonces.sol";
-import {ERC20} from "../ERC20.sol";
-import {IERC20Permit} from "./IERC20Permit.sol";
 
 /**
  * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
@@ -38,7 +38,9 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
      */
     constructor(string memory name) EIP712(name, "1") {}
 
-    /// @inheritdoc IERC20Permit
+    /**
+     * @inheritdoc IERC20Permit
+     */
     function permit(
         address owner,
         address spender,
@@ -48,26 +50,34 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
         bytes32 r,
         bytes32 s
     ) public virtual {
-        require(block.timestamp <= deadline, ERC2612ExpiredSignature(deadline));
+        if (block.timestamp > deadline) {
+            revert ERC2612ExpiredSignature(deadline);
+        }
 
         bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline));
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
         address signer = ECDSA.recover(hash, v, r, s);
-        require(signer == owner, ERC2612InvalidSigner(signer, owner));
+        if (signer != owner) {
+            revert ERC2612InvalidSigner(signer, owner);
+        }
 
         _approve(owner, spender, value);
     }
 
-    /// @inheritdoc IERC20Permit
+    /**
+     * @inheritdoc IERC20Permit
+     */
     function nonces(address owner) public view virtual override(IERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
     }
 
-    /// @inheritdoc IERC20Permit
+    /**
+     * @inheritdoc IERC20Permit
+     */
     // solhint-disable-next-line func-name-mixedcase
-    function DOMAIN_SEPARATOR() external view returns (bytes32) {
+    function DOMAIN_SEPARATOR() external view virtual returns (bytes32) {
         return _domainSeparatorV4();
     }
 }

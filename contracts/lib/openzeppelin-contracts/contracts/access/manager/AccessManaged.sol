@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.4.0) (access/manager/AccessManaged.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (access/manager/AccessManaged.sol)
 
 pragma solidity ^0.8.20;
 
-import {Context} from "../../utils/Context.sol";
+import {IAuthority} from "./IAuthority.sol";
 import {AuthorityUtils} from "./AuthorityUtils.sol";
-import {IAccessManaged} from "./IAccessManaged.sol";
 import {IAccessManager} from "./IAccessManager.sol";
+import {IAccessManaged} from "./IAccessManaged.sol";
+import {Context} from "../../utils/Context.sol";
 
 /**
  * @dev This contract module makes available a {restricted} modifier. Functions decorated with this modifier will be
@@ -62,13 +63,7 @@ abstract contract AccessManaged is Context, IAccessManaged {
         return _authority;
     }
 
-    /**
-     * @dev Transfers control to a new authority. The caller must be the current authority.
-     *
-     * NOTE: Authorization depends only on the caller being the current authority, not on the function that entered
-     * the contract. A target that delegatecalls into itself (e.g. {Multicall}) can reach this function from any
-     * entry point its authority allows.
-     */
+    /// @inheritdoc IAccessManaged
     function setAuthority(address newAuthority) public virtual {
         address caller = _msgSender();
         if (caller != authority()) {

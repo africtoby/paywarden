@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.5.0) (token/ERC721/extensions/ERC721Wrapper.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (token/ERC721/extensions/ERC721Wrapper.sol)
 
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.20;
 
 import {IERC721, ERC721} from "../ERC721.sol";
 import {IERC721Receiver} from "../IERC721Receiver.sol";
@@ -36,7 +36,7 @@ abstract contract ERC721Wrapper is ERC721, IERC721Receiver {
             // This is an "unsafe" transfer that doesn't call any hook on the receiver. With underlying() being trusted
             // (by design of this contract) and no other contracts expected to be called from there, we are safe.
             // slither-disable-next-line reentrancy-no-eth
-            underlying().transferFrom(_msgSender(), address(this), tokenId); // forge-lint: disable-line(erc20-unchecked-transfer)
+            underlying().transferFrom(_msgSender(), address(this), tokenId);
             _safeMint(account, tokenId);
         }
 
@@ -86,7 +86,9 @@ abstract contract ERC721Wrapper is ERC721, IERC721Receiver {
      */
     function _recover(address account, uint256 tokenId) internal virtual returns (uint256) {
         address owner = underlying().ownerOf(tokenId);
-        require(owner == address(this), ERC721IncorrectOwner(address(this), tokenId, owner));
+        if (owner != address(this)) {
+            revert ERC721IncorrectOwner(address(this), tokenId, owner);
+        }
         _safeMint(account, tokenId);
         return tokenId;
     }

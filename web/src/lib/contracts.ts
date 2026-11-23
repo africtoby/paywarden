@@ -3,8 +3,8 @@ import type { Address } from "viem";
 // Deployed on Aevum (chain 44005). See docs/PROGRESS.md.
 export const ADDRESSES = {
   tusd8: "0x456569838f1d43009A91ebA4263147Afd7233483",
-  factory: "0x9A634535065AE7b3e3DF523d76d0d2Eed5AeB5b8",
-  identityRegistry: "0xbA8b7E63CCE8b9f93E53874922947883CFc38F0e",
+  factory: "0x9cE6f91fCd725A4F54083469fBe170Ae1930cE41",
+  identityRegistry: "0x65b0B1df79B5A61021feF2BfA489a49A6b646F85",
 } as const satisfies Record<string, Address>;
 
 export const TOKEN_DECIMALS = 6; // tUSD8

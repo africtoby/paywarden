@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.7.0) (utils/cryptography/EIP712.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (utils/cryptography/EIP712.sol)
 
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.20;
 
-import {IERC5267} from "../../interfaces/IERC5267.sol";
-import {ShortStrings, ShortString} from "../ShortStrings.sol";
 import {MessageHashUtils} from "./MessageHashUtils.sol";
+import {ShortStrings, ShortString} from "../ShortStrings.sol";
+import {IERC5267} from "../../interfaces/IERC5267.sol";
 
 /**
  * @dev https://eips.ethereum.org/EIPS/eip-712[EIP-712] is a standard for hashing and signing of typed structured data.
@@ -23,15 +23,11 @@ import {MessageHashUtils} from "./MessageHashUtils.sol";
  * the chain id to protect against replay attacks on an eventual fork of the chain.
  *
  * NOTE: This contract implements the version of the encoding known as "v4", as implemented by the JSON RPC method
- * https://docs.metamask.io/wallet/how-to/sign-data/[`eth_signTypedDataV4` in MetaMask].
+ * https://docs.metamask.io/guide/signing-data.html[`eth_signTypedDataV4` in MetaMask].
  *
  * NOTE: In the upgradeable version of this contract, the cached values will correspond to the address, and the domain
  * separator of the implementation contract. This will cause the {_domainSeparatorV4} function to always rebuild the
  * separator from the immutable values, which is cheaper than accessing a cached version in cold storage.
- *
- * IMPORTANT: The `name` and `version` must each fit in a `ShortString` (at most 31 bytes). Longer values cause the
- * constructor to revert with a `ShortStrings.StringTooLong` error. Because the values are stored exclusively in
- * immutables, the domain is preserved when the contract is used behind a proxy or clone without an initializer.
  *
  * @custom:oz-upgrades-unsafe-allow state-variable-immutable
  */
@@ -52,15 +48,7 @@ abstract contract EIP712 is IERC5267 {
 
     ShortString private immutable _name;
     ShortString private immutable _version;
-
-    // IMPORTANT: Deprecated. Kept to preserve the storage layout of inheriting contracts used as an
-    // implementation behind a proxy.
-    // slither-disable-next-line constable-states
     string private _nameFallback;
-
-    // IMPORTANT: Deprecated. Kept to preserve the storage layout of inheriting contracts used as an
-    // implementation behind a proxy.
-    // slither-disable-next-line constable-states
     string private _versionFallback;
 
     /**
@@ -76,8 +64,8 @@ abstract contract EIP712 is IERC5267 {
      * contract upgrade].
      */
     constructor(string memory name, string memory version) {
-        _name = name.toShortString();
-        _version = version.toShortString();
+        _name = name.toShortStringWithFallback(_nameFallback);
+        _version = version.toShortStringWithFallback(_versionFallback);
         _hashedName = keccak256(bytes(name));
         _hashedVersion = keccak256(bytes(version));
 
@@ -120,7 +108,9 @@ abstract contract EIP712 is IERC5267 {
         return MessageHashUtils.toTypedDataHash(_domainSeparatorV4(), structHash);
     }
 
-    /// @inheritdoc IERC5267
+    /**
+     * @dev See {IERC-5267}.
+     */
     function eip712Domain()
         public
         view
@@ -149,20 +139,22 @@ abstract contract EIP712 is IERC5267 {
     /**
      * @dev The name parameter for the EIP712 domain.
      *
-     * NOTE: This function reads `_name`, which is an immutable value.
+     * NOTE: By default this function reads _name which is an immutable value.
+     * It only reads from storage if necessary (in case the value is too large to fit in a ShortString).
      */
     // solhint-disable-next-line func-name-mixedcase
     function _EIP712Name() internal view returns (string memory) {
-        return _name.toString();
+        return _name.toStringWithFallback(_nameFallback);
     }
 
     /**
      * @dev The version parameter for the EIP712 domain.
      *
-     * NOTE: This function reads `_version`, which is an immutable value.
+     * NOTE: By default this function reads _version which is an immutable value.
+     * It only reads from storage if necessary (in case the value is too large to fit in a ShortString).
      */
     // solhint-disable-next-line func-name-mixedcase
     function _EIP712Version() internal view returns (string memory) {
-        return _version.toString();
+        return _version.toStringWithFallback(_versionFallback);
     }
 }

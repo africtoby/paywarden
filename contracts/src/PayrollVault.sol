@@ -76,6 +76,7 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
     event ReviewWindowSet(uint64 reviewWindow);
     event PayeeInvited(bytes32 indexed payeeId);
     event PayeeConfirmed(bytes32 indexed payeeId, address indexed wallet, uint256 identityId);
+    event PayeeRevoked(bytes32 indexed payeeId, address indexed wallet);
     event AgentIdentityRegistered(address indexed agent, uint256 identityId);
     event RunProposed(
         bytes32 indexed runKey, address indexed agent, bytes32 memoHash, uint256 total, uint64 executableAt
@@ -151,6 +152,15 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
         uint256 identityId = _registerIdentityFor(msg.sender);
         payeeIdentityId[payeeId] = identityId;
         emit PayeeConfirmed(payeeId, msg.sender, identityId);
+    }
+
+    /// @notice Unlinks a payee's wallet (wrong wallet, lost key). The invite stays open, so the payee can confirm again.
+    function revokePayee(bytes32 payeeId) external onlyOwner {
+        address wallet = payeeWallet[payeeId];
+        if (wallet == address(0)) revert PayeeNotConfirmed(payeeId);
+        delete payeeWallet[payeeId];
+        delete walletPayee[wallet];
+        emit PayeeRevoked(payeeId, wallet);
     }
 
     /// @notice Registers the agent in the identity registry; the identity token is sent to the agent.
@@ -241,6 +251,7 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
         for (uint256 i; i < n; ++i) {
             bytes32 payeeId = r.payeeIds[i];
             address wallet = payeeWallet[payeeId];
+            if (wallet == address(0)) revert PayeeNotConfirmed(payeeId); // unlinked after the draft
             token.safeTransfer(wallet, r.amounts[i]);
             emit PayeePaid(runKey, payeeId, wallet, r.amounts[i]);
         }

@@ -62,6 +62,9 @@ export function explainError(err: unknown): string {
   if (err instanceof BaseError) {
     const revert = err.walk((e) => e instanceof ContractFunctionRevertedError);
     if (revert instanceof ContractFunctionRevertedError) {
+      // tUSD8 reports its own failures as plain text rather than custom errors.
+      if (/exceeds balance/i.test(revert.reason ?? "")) return "Your wallet does not hold enough tUSD8.";
+      if (/exceeds allowance/i.test(revert.reason ?? "")) return "The vault is not yet allowed to take that amount. Approve it first.";
       const name = revert.data?.errorName;
       if (name) {
         return explainRevert(name, revert.data?.args ?? []) ?? "The contract refused this action. Check the details and try again.";
@@ -70,6 +73,10 @@ export function explainError(err: unknown): string {
     const msg = err.shortMessage ?? err.message;
     if (/user rejected|denied/i.test(msg)) return "You cancelled the request in your wallet.";
     if (/insufficient funds/i.test(msg)) return "Your wallet needs a little tQDAY to pay the network fee.";
+    if (/revert|invalid opcode|execution failed/i.test(msg)) {
+      console.error("Transaction refused by the network:", msg);
+      return "The network refused this transaction, so nothing was sent. Details are in the browser console.";
+    }
   }
   return "Something went wrong. Check your connection and try again.";
 }

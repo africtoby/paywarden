@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.7.0) (access/AccessControl.sol)
+// OpenZeppelin Contracts (last updated v5.0.0) (access/AccessControl.sol)
 
 pragma solidity ^0.8.20;
 
+import {IAccessControl} from "./IAccessControl.sol";
 import {Context} from "../utils/Context.sol";
 import {ERC165} from "../utils/introspection/ERC165.sol";
-import {IAccessControl} from "./IAccessControl.sol";
 
 /**
  * @dev Contract module that allows children to implement role-based access
@@ -65,7 +65,9 @@ abstract contract AccessControl is Context, IAccessControl, ERC165 {
         _;
     }
 
-    /// @inheritdoc ERC165
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IAccessControl).interfaceId || super.supportsInterface(interfaceId);
     }
@@ -143,7 +145,8 @@ abstract contract AccessControl is Context, IAccessControl, ERC165 {
      * purpose is to provide a mechanism for accounts to lose their privileges
      * if they are compromised (such as when a trusted device is misplaced).
      *
-     * Emits a {RoleRevoked} event if the calling account had `role` and this call successfully revoked it.
+     * If the calling account had been revoked `role`, emits a {RoleRevoked}
+     * event.
      *
      * Requirements:
      *
@@ -188,7 +191,7 @@ abstract contract AccessControl is Context, IAccessControl, ERC165 {
     }
 
     /**
-     * @dev Attempts to revoke `role` from `account` and returns a boolean indicating if `role` was revoked.
+     * @dev Attempts to revoke `role` to `account` and returns a boolean indicating if `role` was revoked.
      *
      * Internal function without access restriction.
      *

@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.7.0) (token/common/ERC2981.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (token/common/ERC2981.sol)
 
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.20;
 
 import {IERC2981} from "../../interfaces/IERC2981.sol";
 import {IERC165, ERC165} from "../../utils/introspection/ERC165.sol";
-import {Math} from "../../utils/math/Math.sol";
 
 /**
  * @dev Implementation of the NFT Royalty Standard, a standardized way to retrieve royalty payment information.
@@ -40,7 +39,7 @@ abstract contract ERC2981 is IERC2981, ERC165 {
     error ERC2981InvalidDefaultRoyaltyReceiver(address receiver);
 
     /**
-     * @dev The royalty set for a specific `tokenId` is invalid (eg. (numerator / denominator) >= 1).
+     * @dev The royalty set for an specific `tokenId` is invalid (eg. (numerator / denominator) >= 1).
      */
     error ERC2981InvalidTokenRoyalty(uint256 tokenId, uint256 numerator, uint256 denominator);
 
@@ -49,12 +48,16 @@ abstract contract ERC2981 is IERC2981, ERC165 {
      */
     error ERC2981InvalidTokenRoyaltyReceiver(uint256 tokenId, address receiver);
 
-    /// @inheritdoc IERC165
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
         return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    /// @inheritdoc IERC2981
+    /**
+     * @inheritdoc IERC2981
+     */
     function royaltyInfo(
         uint256 tokenId,
         uint256 salePrice
@@ -68,7 +71,7 @@ abstract contract ERC2981 is IERC2981, ERC165 {
             royaltyFraction = _defaultRoyaltyInfo.royaltyFraction;
         }
 
-        uint256 royaltyAmount = Math.mulDiv(salePrice, royaltyFraction, _feeDenominator());
+        uint256 royaltyAmount = (salePrice * royaltyFraction) / _feeDenominator();
 
         return (royaltyReceiver, royaltyAmount);
     }
@@ -92,9 +95,13 @@ abstract contract ERC2981 is IERC2981, ERC165 {
      */
     function _setDefaultRoyalty(address receiver, uint96 feeNumerator) internal virtual {
         uint256 denominator = _feeDenominator();
-        // Royalty fee will exceed the sale price
-        require(feeNumerator <= denominator, ERC2981InvalidDefaultRoyalty(feeNumerator, denominator));
-        require(receiver != address(0), ERC2981InvalidDefaultRoyaltyReceiver(address(0)));
+        if (feeNumerator > denominator) {
+            // Royalty fee will exceed the sale price
+            revert ERC2981InvalidDefaultRoyalty(feeNumerator, denominator);
+        }
+        if (receiver == address(0)) {
+            revert ERC2981InvalidDefaultRoyaltyReceiver(address(0));
+        }
 
         _defaultRoyaltyInfo = RoyaltyInfo(receiver, feeNumerator);
     }
@@ -116,9 +123,13 @@ abstract contract ERC2981 is IERC2981, ERC165 {
      */
     function _setTokenRoyalty(uint256 tokenId, address receiver, uint96 feeNumerator) internal virtual {
         uint256 denominator = _feeDenominator();
-        // Royalty fee will exceed the sale price
-        require(feeNumerator <= denominator, ERC2981InvalidTokenRoyalty(tokenId, feeNumerator, denominator));
-        require(receiver != address(0), ERC2981InvalidTokenRoyaltyReceiver(tokenId, address(0)));
+        if (feeNumerator > denominator) {
+            // Royalty fee will exceed the sale price
+            revert ERC2981InvalidTokenRoyalty(tokenId, feeNumerator, denominator);
+        }
+        if (receiver == address(0)) {
+            revert ERC2981InvalidTokenRoyaltyReceiver(tokenId, address(0));
+        }
 
         _tokenRoyaltyInfo[tokenId] = RoyaltyInfo(receiver, feeNumerator);
     }

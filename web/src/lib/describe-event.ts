@@ -10,6 +10,7 @@ export function describeEvent(e: VaultEvent): string {
     case "ReviewWindowSet": return "Review window changed";
     case "PayeeInvited": return "Payee invited";
     case "PayeeConfirmed": return `Payee confirmed with ${shortAddress(String(a.wallet))}`;
+    case "PayeeRevoked": return `Payee wallet ${shortAddress(String(a.wallet))} unlinked`;
     case "AgentIdentityRegistered": return "Assistant identity registered";
     case "RunProposed": return `Assistant drafted a run of ${formatAmount(a.total as bigint)} tUSD8`;
     case "RunApproved": return "You approved a run";

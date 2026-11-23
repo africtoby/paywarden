@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.7.0) (token/ERC20/extensions/ERC4626.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (token/ERC20/extensions/ERC4626.sol)
 
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.20;
 
-import {IERC4626} from "../../../interfaces/IERC4626.sol";
-import {Math} from "../../../utils/math/Math.sol";
 import {IERC20, IERC20Metadata, ERC20} from "../ERC20.sol";
 import {SafeERC20} from "../utils/SafeERC20.sol";
+import {IERC4626} from "../../../interfaces/IERC4626.sol";
+import {Math} from "../../../utils/math/Math.sol";
 
 /**
  * @dev Implementation of the ERC-4626 "Tokenized Vault Standard" as defined in
@@ -34,7 +34,7 @@ import {SafeERC20} from "../utils/SafeERC20.sol";
  * offset (0) makes it non-profitable even if an attacker is able to capture value from multiple user deposits, as a result
  * of the value being captured by the virtual shares (out of the attacker's donation) matching the attacker's expected gains.
  * With a larger offset, the attack becomes orders of magnitude more expensive than it is profitable. More details about the
- * underlying math can be found xref:ROOT:erc4626.adoc#inflation-attack[here].
+ * underlying math can be found xref:erc4626.adoc#inflation-attack[here].
  *
  * The drawback of this approach is that the virtual shares do capture (a very small) part of the value being accrued
  * to the vault. Also, if the vault experiences losses, the users try to exit the vault, the virtual shares and assets
@@ -43,34 +43,6 @@ import {SafeERC20} from "../utils/SafeERC20.sol";
  * `_convertToShares` and `_convertToAssets` functions.
  *
  * To learn more, check out our xref:ROOT:erc4626.adoc[ERC-4626 guide].
- * ====
- *
- * [NOTE]
- * ====
- * When overriding this contract, some elements must be considered:
- *
- * * When overriding the behavior of the deposit or withdraw mechanisms, it is recommended to override the internal
- * functions. Overriding {_deposit} automatically affects both {deposit} and {mint}. Similarly, overriding {_withdraw}
- * automatically affects both {withdraw} and {redeem}. Overall it is not recommended to override the public facing
- * functions since that could lead to inconsistent behaviors between the {deposit} and {mint} or between {withdraw} and
- * {redeem}, which is documented to have led to loss of funds.
- *
- * * Overrides to the deposit or withdraw mechanism must be reflected in the preview functions as well.
- *
- * * {maxWithdraw} depends on {maxRedeem}. Therefore, overriding {maxRedeem} only is enough. On the other hand,
- * overriding {maxWithdraw} only would have no effect on {maxRedeem}, and could create an inconsistency between the two
- * functions.
- *
- * * If {previewRedeem} is overridden to revert, {maxWithdraw} must be overridden as necessary to ensure it
- * always return successfully.
- * ====
- *
- * [CAUTION]
- * ====
- * Any mechanism that mints shares without a corresponding increase in the vault's assets (collateral) will alter the
- * exchange rate and may open the door to vulnerabilities. In particular, this contract
- * must NOT be combined with {ERC20FlashMint}: flash-minting shares temporarily inflates the total supply without
- * increasing collateral, corrupting the exchange rate applied during the flash loan.
  * ====
  */
 abstract contract ERC4626 is ERC20, IERC4626 {
@@ -90,29 +62,38 @@ abstract contract ERC4626 is ERC20, IERC4626 {
     error ERC4626ExceededMaxMint(address receiver, uint256 shares, uint256 max);
 
     /**
-     * @dev Attempted to withdraw more assets than the max amount for `owner`.
+     * @dev Attempted to withdraw more assets than the max amount for `receiver`.
      */
     error ERC4626ExceededMaxWithdraw(address owner, uint256 assets, uint256 max);
 
     /**
-     * @dev Attempted to redeem more shares than the max amount for `owner`.
+     * @dev Attempted to redeem more shares than the max amount for `receiver`.
      */
     error ERC4626ExceededMaxRedeem(address owner, uint256 shares, uint256 max);
-
-    /**
-     * @dev Attempted to {deposit} or {mint} with a native value (`msg.value`) the vault does not expect. The
-     * vault reverts with this error on any non-zero `msg.value` unless {_enablePayableDeposit} is overridden to
-     * return `true`, as native-asset vaults (see {ERC7535}) do.
-     */
-    error ERC4626UnexpectedNativeValue(uint256 value);
 
     /**
      * @dev Set the underlying asset contract. This must be an ERC20-compatible contract (ERC-20 or ERC-777).
      */
     constructor(IERC20 asset_) {
-        (bool success, uint8 assetDecimals) = SafeERC20.tryGetDecimals(asset_);
+        (bool success, uint8 assetDecimals) = _tryGetAssetDecimals(asset_);
         _underlyingDecimals = success ? assetDecimals : 18;
         _asset = asset_;
+    }
+
+    /**
+     * @dev Attempts to fetch the asset decimals. A return value of false indicates that the attempt failed in some way.
+     */
+    function _tryGetAssetDecimals(IERC20 asset_) private view returns (bool ok, uint8 assetDecimals) {
+        (bool success, bytes memory encodedDecimals) = address(asset_).staticcall(
+            abi.encodeCall(IERC20Metadata.decimals, ())
+        );
+        if (success && encodedDecimals.length >= 32) {
+            uint256 returnedDecimals = abi.decode(encodedDecimals, (uint256));
+            if (returnedDecimals <= type(uint8).max) {
+                return (true, uint8(returnedDecimals));
+            }
+        }
+        return (false, 0);
     }
 
     /**
@@ -126,72 +107,72 @@ abstract contract ERC4626 is ERC20, IERC4626 {
         return _underlyingDecimals + _decimalsOffset();
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-asset}. */
     function asset() public view virtual returns (address) {
         return address(_asset);
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-totalAssets}. */
     function totalAssets() public view virtual returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this));
+        return _asset.balanceOf(address(this));
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-convertToShares}. */
     function convertToShares(uint256 assets) public view virtual returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Floor);
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-convertToAssets}. */
     function convertToAssets(uint256 shares) public view virtual returns (uint256) {
         return _convertToAssets(shares, Math.Rounding.Floor);
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-maxDeposit}. */
     function maxDeposit(address) public view virtual returns (uint256) {
         return type(uint256).max;
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-maxMint}. */
     function maxMint(address) public view virtual returns (uint256) {
         return type(uint256).max;
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-maxWithdraw}. */
     function maxWithdraw(address owner) public view virtual returns (uint256) {
-        return previewRedeem(maxRedeem(owner));
+        return _convertToAssets(balanceOf(owner), Math.Rounding.Floor);
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-maxRedeem}. */
     function maxRedeem(address owner) public view virtual returns (uint256) {
         return balanceOf(owner);
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-previewDeposit}. */
     function previewDeposit(uint256 assets) public view virtual returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Floor);
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-previewMint}. */
     function previewMint(uint256 shares) public view virtual returns (uint256) {
         return _convertToAssets(shares, Math.Rounding.Ceil);
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-previewWithdraw}. */
     function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Ceil);
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-previewRedeem}. */
     function previewRedeem(uint256 shares) public view virtual returns (uint256) {
         return _convertToAssets(shares, Math.Rounding.Floor);
     }
 
-    /// @inheritdoc IERC4626
-    function deposit(uint256 assets, address receiver) public payable virtual returns (uint256) {
-        require(_enablePayableDeposit() || msg.value == 0, ERC4626UnexpectedNativeValue(msg.value));
-
+    /** @dev See {IERC4626-deposit}. */
+    function deposit(uint256 assets, address receiver) public virtual returns (uint256) {
         uint256 maxAssets = maxDeposit(receiver);
-        require(assets <= maxAssets, ERC4626ExceededMaxDeposit(receiver, assets, maxAssets));
+        if (assets > maxAssets) {
+            revert ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
+        }
 
         uint256 shares = previewDeposit(assets);
         _deposit(_msgSender(), receiver, assets, shares);
@@ -199,12 +180,12 @@ abstract contract ERC4626 is ERC20, IERC4626 {
         return shares;
     }
 
-    /// @inheritdoc IERC4626
-    function mint(uint256 shares, address receiver) public payable virtual returns (uint256) {
-        require(_enablePayableDeposit() || msg.value == 0, ERC4626UnexpectedNativeValue(msg.value));
-
+    /** @dev See {IERC4626-mint}. */
+    function mint(uint256 shares, address receiver) public virtual returns (uint256) {
         uint256 maxShares = maxMint(receiver);
-        require(shares <= maxShares, ERC4626ExceededMaxMint(receiver, shares, maxShares));
+        if (shares > maxShares) {
+            revert ERC4626ExceededMaxMint(receiver, shares, maxShares);
+        }
 
         uint256 assets = previewMint(shares);
         _deposit(_msgSender(), receiver, assets, shares);
@@ -212,10 +193,12 @@ abstract contract ERC4626 is ERC20, IERC4626 {
         return assets;
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-withdraw}. */
     function withdraw(uint256 assets, address receiver, address owner) public virtual returns (uint256) {
         uint256 maxAssets = maxWithdraw(owner);
-        require(assets <= maxAssets, ERC4626ExceededMaxWithdraw(owner, assets, maxAssets));
+        if (assets > maxAssets) {
+            revert ERC4626ExceededMaxWithdraw(owner, assets, maxAssets);
+        }
 
         uint256 shares = previewWithdraw(assets);
         _withdraw(_msgSender(), receiver, owner, assets, shares);
@@ -223,10 +206,12 @@ abstract contract ERC4626 is ERC20, IERC4626 {
         return shares;
     }
 
-    /// @inheritdoc IERC4626
+    /** @dev See {IERC4626-redeem}. */
     function redeem(uint256 shares, address receiver, address owner) public virtual returns (uint256) {
         uint256 maxShares = maxRedeem(owner);
-        require(shares <= maxShares, ERC4626ExceededMaxRedeem(owner, shares, maxShares));
+        if (shares > maxShares) {
+            revert ERC4626ExceededMaxRedeem(owner, shares, maxShares);
+        }
 
         uint256 assets = previewRedeem(shares);
         _withdraw(_msgSender(), receiver, owner, assets, shares);
@@ -252,14 +237,14 @@ abstract contract ERC4626 is ERC20, IERC4626 {
      * @dev Deposit/mint common workflow.
      */
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual {
-        // If asset() is ERC-777, `transferFrom` can trigger a reentrancy BEFORE the transfer happens through the
+        // If _asset is ERC-777, `transferFrom` can trigger a reentrancy BEFORE the transfer happens through the
         // `tokensToSend` hook. On the other hand, the `tokenReceived` hook, that is triggered after the transfer,
         // calls the vault, which is assumed not malicious.
         //
         // Conclusion: we need to do the transfer before we mint so that any reentrancy would happen before the
         // assets are transferred and before the shares are minted, which is a valid state.
         // slither-disable-next-line reentrancy-no-eth
-        _transferIn(caller, assets);
+        SafeERC20.safeTransferFrom(_asset, caller, address(this), assets);
         _mint(receiver, shares);
 
         emit Deposit(caller, receiver, assets, shares);
@@ -279,48 +264,18 @@ abstract contract ERC4626 is ERC20, IERC4626 {
             _spendAllowance(owner, caller, shares);
         }
 
-        // If asset() is ERC-777, `transfer` can trigger a reentrancy AFTER the transfer happens through the
+        // If _asset is ERC-777, `transfer` can trigger a reentrancy AFTER the transfer happens through the
         // `tokensReceived` hook. On the other hand, the `tokensToSend` hook, that is triggered before the transfer,
         // calls the vault, which is assumed not malicious.
         //
         // Conclusion: we need to do the transfer after the burn so that any reentrancy would happen after the
         // shares are burned and after the assets are transferred, which is a valid state.
         _burn(owner, shares);
-        _transferOut(receiver, assets);
+        SafeERC20.safeTransfer(_asset, receiver, assets);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
-    /// @dev Performs a transfer in of underlying assets. The default implementation uses `SafeERC20`. Used by {_deposit}.
-    function _transferIn(address from, uint256 assets) internal virtual {
-        // slither-disable-next-line arbitrary-send-erc20
-        SafeERC20.safeTransferFrom(IERC20(asset()), from, address(this), assets);
-    }
-
-    /// @dev Performs a transfer out of underlying assets. The default implementation uses `SafeERC20`. Used by {_withdraw}.
-    function _transferOut(address to, uint256 assets) internal virtual {
-        SafeERC20.safeTransfer(IERC20(asset()), to, assets);
-    }
-
-    /**
-     * @dev Whether {deposit} and {mint} accept a native value (`msg.value`).
-     *
-     * {deposit} and {mint} are `payable` so that vaults whose underlying is the chain's native asset (see
-     * {ERC7535}) can receive it as `msg.value`. The default implementation, used by ERC-4626 vaults, returns
-     * `false` so that any native value sent is rejected, which preserves the behavior of a non-`payable` entry
-     * point. Native asset vaults override this to return `true` and process `msg.value` themselves.
-     */
-    function _enablePayableDeposit() internal view virtual returns (bool) {
-        return false;
-    }
-
-    /**
-     * @dev Offset between the decimals of the underlying asset and those of the vault shares. See the contract-level
-     * documentation on inflation attacks.
-     *
-     * NOTE: The conversion math computes `10 ** _decimalsOffset()`, which overflows from an offset of 78 onwards.
-     * Overrides must return at most 77, otherwise every deposit, mint, preview and conversion reverts.
-     */
     function _decimalsOffset() internal view virtual returns (uint8) {
         return 0;
     }

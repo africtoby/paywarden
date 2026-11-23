@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.3.0) (utils/TransientSlot.sol)
-// This file was procedurally generated from scripts/generate/templates/TransientSlot.sol.eta.
+// OpenZeppelin Contracts (last updated v5.1.0) (utils/TransientSlot.sol)
+// This file was procedurally generated from scripts/generate/templates/TransientSlot.js.
 
 pragma solidity ^0.8.24;
 
@@ -10,7 +10,7 @@ pragma solidity ^0.8.24;
  * Transient slots are often used to store temporary values that are removed after the current transaction.
  * This library helps with reading and writing to such slots without the need for inline assembly.
  *
- * Example reading and writing values using transient storage:
+ *  * Example reading and writing values using transient storage:
  * ```solidity
  * contract Lock {
  *     using TransientSlot for *;
@@ -28,47 +28,11 @@ pragma solidity ^0.8.24;
  * }
  * ```
  *
- * Alternatively, the slot can be reserved by declaring a state variable, letting the compiler allocate it:
- * ```solidity
- * contract Lock {
- *     using TransientSlot for *;
- *
- *     // Reserve a slot. The compiler allocates it, just like it would for any other state variable.
- *     TransientSlot.TBoolean private _lock;
- *
- *     modifier locked() {
- *         require(!_lock.tload());
- *
- *         _lock.tstore(true);
- *         _;
- *         _lock.tstore(false);
- *     }
- * }
- * ```
- *
- * NOTE: A reserved slot follows the persistent storage layout. It moves if state variables are added, removed or
- * reordered, so it fits transient values private to the contract that declares it, not values that several contracts
- * (or several facets of a diamond) must agree on. The value is held at the bitwise complement of the reserved slot,
- * which keeps reservations clear of native `transient` state variables: the compiler allocates those in a separate
- * layout starting at slot 0, while the complements grow down from the top of the transient space.
- *
  * TIP: Consider using this library along with {SlotDerivation}.
  */
 library TransientSlot {
     /**
-     * @dev Struct that reserves a slot in the (persistent) storage layout, to hold an address in transient storage.
-     *
-     * The reserved slot is never written to: the value is held in the transient slot whose number is the bitwise
-     * complement (`not`) of the reserved slot's number. This delegates the allocation of transient slots to the
-     * compiler, which is particularly useful for namespacing them: reserving the slot inside an ERC-7201 namespaced
-     * storage struct namespaces the transient slot the same way it namespaces the persistent ones.
-     */
-    struct TAddress {
-        bytes32 _placeholder;
-    }
-
-    /**
-     * @dev UDVT that represents a slot holding an address.
+     * @dev UDVT that represent a slot holding a address.
      */
     type AddressSlot is bytes32;
 
@@ -80,19 +44,7 @@ library TransientSlot {
     }
 
     /**
-     * @dev Struct that reserves a slot in the (persistent) storage layout, to hold a bool in transient storage.
-     *
-     * The reserved slot is never written to: the value is held in the transient slot whose number is the bitwise
-     * complement (`not`) of the reserved slot's number. This delegates the allocation of transient slots to the
-     * compiler, which is particularly useful for namespacing them: reserving the slot inside an ERC-7201 namespaced
-     * storage struct namespaces the transient slot the same way it namespaces the persistent ones.
-     */
-    struct TBoolean {
-        bytes32 _placeholder;
-    }
-
-    /**
-     * @dev UDVT that represents a slot holding a bool.
+     * @dev UDVT that represent a slot holding a bool.
      */
     type BooleanSlot is bytes32;
 
@@ -104,19 +56,7 @@ library TransientSlot {
     }
 
     /**
-     * @dev Struct that reserves a slot in the (persistent) storage layout, to hold a bytes32 in transient storage.
-     *
-     * The reserved slot is never written to: the value is held in the transient slot whose number is the bitwise
-     * complement (`not`) of the reserved slot's number. This delegates the allocation of transient slots to the
-     * compiler, which is particularly useful for namespacing them: reserving the slot inside an ERC-7201 namespaced
-     * storage struct namespaces the transient slot the same way it namespaces the persistent ones.
-     */
-    struct TBytes32 {
-        bytes32 _placeholder;
-    }
-
-    /**
-     * @dev UDVT that represents a slot holding a bytes32.
+     * @dev UDVT that represent a slot holding a bytes32.
      */
     type Bytes32Slot is bytes32;
 
@@ -128,19 +68,7 @@ library TransientSlot {
     }
 
     /**
-     * @dev Struct that reserves a slot in the (persistent) storage layout, to hold a uint256 in transient storage.
-     *
-     * The reserved slot is never written to: the value is held in the transient slot whose number is the bitwise
-     * complement (`not`) of the reserved slot's number. This delegates the allocation of transient slots to the
-     * compiler, which is particularly useful for namespacing them: reserving the slot inside an ERC-7201 namespaced
-     * storage struct namespaces the transient slot the same way it namespaces the persistent ones.
-     */
-    struct TUint256 {
-        bytes32 _placeholder;
-    }
-
-    /**
-     * @dev UDVT that represents a slot holding a uint256.
+     * @dev UDVT that represent a slot holding a uint256.
      */
     type Uint256Slot is bytes32;
 
@@ -152,19 +80,7 @@ library TransientSlot {
     }
 
     /**
-     * @dev Struct that reserves a slot in the (persistent) storage layout, to hold a int256 in transient storage.
-     *
-     * The reserved slot is never written to: the value is held in the transient slot whose number is the bitwise
-     * complement (`not`) of the reserved slot's number. This delegates the allocation of transient slots to the
-     * compiler, which is particularly useful for namespacing them: reserving the slot inside an ERC-7201 namespaced
-     * storage struct namespaces the transient slot the same way it namespaces the persistent ones.
-     */
-    struct TInt256 {
-        bytes32 _placeholder;
-    }
-
-    /**
-     * @dev UDVT that represents a slot holding a int256.
+     * @dev UDVT that represent a slot holding a int256.
      */
     type Int256Slot is bytes32;
 
@@ -185,33 +101,11 @@ library TransientSlot {
     }
 
     /**
-     * @dev Load the value held in the transient slot reserved by `self`.
-     */
-    function tload(TAddress storage self) internal view returns (address value) {
-        assembly ("memory-safe") {
-            // Reservations grow down from the top of the transient space, away from the `transient`
-            // variables that the compiler allocates from slot 0.
-            value := tload(not(self.slot))
-        }
-    }
-
-    /**
      * @dev Store `value` at location `slot` in transient storage.
      */
     function tstore(AddressSlot slot, address value) internal {
         assembly ("memory-safe") {
             tstore(slot, value)
-        }
-    }
-
-    /**
-     * @dev Store `value` in the transient slot reserved by `self`.
-     */
-    function tstore(TAddress storage self, address value) internal {
-        assembly ("memory-safe") {
-            // Reservations grow down from the top of the transient space, away from the `transient`
-            // variables that the compiler allocates from slot 0.
-            tstore(not(self.slot), value)
         }
     }
 
@@ -225,33 +119,11 @@ library TransientSlot {
     }
 
     /**
-     * @dev Load the value held in the transient slot reserved by `self`.
-     */
-    function tload(TBoolean storage self) internal view returns (bool value) {
-        assembly ("memory-safe") {
-            // Reservations grow down from the top of the transient space, away from the `transient`
-            // variables that the compiler allocates from slot 0.
-            value := tload(not(self.slot))
-        }
-    }
-
-    /**
      * @dev Store `value` at location `slot` in transient storage.
      */
     function tstore(BooleanSlot slot, bool value) internal {
         assembly ("memory-safe") {
             tstore(slot, value)
-        }
-    }
-
-    /**
-     * @dev Store `value` in the transient slot reserved by `self`.
-     */
-    function tstore(TBoolean storage self, bool value) internal {
-        assembly ("memory-safe") {
-            // Reservations grow down from the top of the transient space, away from the `transient`
-            // variables that the compiler allocates from slot 0.
-            tstore(not(self.slot), value)
         }
     }
 
@@ -265,33 +137,11 @@ library TransientSlot {
     }
 
     /**
-     * @dev Load the value held in the transient slot reserved by `self`.
-     */
-    function tload(TBytes32 storage self) internal view returns (bytes32 value) {
-        assembly ("memory-safe") {
-            // Reservations grow down from the top of the transient space, away from the `transient`
-            // variables that the compiler allocates from slot 0.
-            value := tload(not(self.slot))
-        }
-    }
-
-    /**
      * @dev Store `value` at location `slot` in transient storage.
      */
     function tstore(Bytes32Slot slot, bytes32 value) internal {
         assembly ("memory-safe") {
             tstore(slot, value)
-        }
-    }
-
-    /**
-     * @dev Store `value` in the transient slot reserved by `self`.
-     */
-    function tstore(TBytes32 storage self, bytes32 value) internal {
-        assembly ("memory-safe") {
-            // Reservations grow down from the top of the transient space, away from the `transient`
-            // variables that the compiler allocates from slot 0.
-            tstore(not(self.slot), value)
         }
     }
 
@@ -305,33 +155,11 @@ library TransientSlot {
     }
 
     /**
-     * @dev Load the value held in the transient slot reserved by `self`.
-     */
-    function tload(TUint256 storage self) internal view returns (uint256 value) {
-        assembly ("memory-safe") {
-            // Reservations grow down from the top of the transient space, away from the `transient`
-            // variables that the compiler allocates from slot 0.
-            value := tload(not(self.slot))
-        }
-    }
-
-    /**
      * @dev Store `value` at location `slot` in transient storage.
      */
     function tstore(Uint256Slot slot, uint256 value) internal {
         assembly ("memory-safe") {
             tstore(slot, value)
-        }
-    }
-
-    /**
-     * @dev Store `value` in the transient slot reserved by `self`.
-     */
-    function tstore(TUint256 storage self, uint256 value) internal {
-        assembly ("memory-safe") {
-            // Reservations grow down from the top of the transient space, away from the `transient`
-            // variables that the compiler allocates from slot 0.
-            tstore(not(self.slot), value)
         }
     }
 
@@ -345,33 +173,11 @@ library TransientSlot {
     }
 
     /**
-     * @dev Load the value held in the transient slot reserved by `self`.
-     */
-    function tload(TInt256 storage self) internal view returns (int256 value) {
-        assembly ("memory-safe") {
-            // Reservations grow down from the top of the transient space, away from the `transient`
-            // variables that the compiler allocates from slot 0.
-            value := tload(not(self.slot))
-        }
-    }
-
-    /**
      * @dev Store `value` at location `slot` in transient storage.
      */
     function tstore(Int256Slot slot, int256 value) internal {
         assembly ("memory-safe") {
             tstore(slot, value)
-        }
-    }
-
-    /**
-     * @dev Store `value` in the transient slot reserved by `self`.
-     */
-    function tstore(TInt256 storage self, int256 value) internal {
-        assembly ("memory-safe") {
-            // Reservations grow down from the top of the transient space, away from the `transient`
-            // variables that the compiler allocates from slot 0.
-            tstore(not(self.slot), value)
         }
     }
 }

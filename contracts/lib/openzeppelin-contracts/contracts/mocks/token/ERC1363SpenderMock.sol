@@ -24,9 +24,9 @@ contract ERC1363SpenderMock is IERC1363Spender {
         _error = RevertType.None;
     }
 
-    function setUp(bytes4 retval, RevertType err) public {
+    function setUp(bytes4 retval, RevertType error) public {
         _retval = retval;
-        _error = err;
+        _error = error;
     }
 
     function onApprovalReceived(address owner, uint256 value, bytes calldata data) external override returns (bytes4) {

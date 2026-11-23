@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { WalletButton } from "@/components/wallet-button";
 import { isAddress, isHex, type Address, type Hex } from "viem";
-import { useAccount } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
 import { Seal } from "@/components/seal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,6 +30,9 @@ export default function ConfirmPage() {
     const ok = vault && name && salt && isAddress(vault) && isHex(salt, { strict: true }) && salt.length === 66;
     queueMicrotask(() => setInvite(ok ? { vault, name, salt } : null));
   }, []);
+
+  const owner = useReadContract({ address: invite?.vault, abi: payrollVaultAbi, functionName: "owner", query: { enabled: !!invite } });
+  const isOwner = !!address && !!owner.data && owner.data.toLowerCase() === address.toLowerCase();
 
   const confirm = async () => {
     if (!invite) return;
@@ -83,9 +86,17 @@ export default function ConfirmPage() {
                 <p className="max-w-sm text-[16px] text-muted-foreground">
                   Your employer invited you to be paid in tUSD8. Confirming links the wallet you are connected with to this name. Only that wallet will ever receive your pay.
                 </p>
+                {isConnected && address && (
+                  <p className="font-mono text-[12px] text-muted-foreground">Connected as {shortAddress(address)}</p>
+                )}
+                {isOwner && (
+                  <p role="alert" className="max-w-sm rounded-xl border border-[var(--refused)] px-4 py-3 text-[14px] text-[var(--refused)]">
+                    This wallet owns the vault. Switch to the payee&apos;s own wallet before confirming, or you would be paying yourself.
+                  </p>
+                )}
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   {isConnected ? (
-                    <Button className="rounded-full" disabled={busy} onClick={confirm}>
+                    <Button className="rounded-full" disabled={busy || isOwner} onClick={confirm}>
                       Confirm with this wallet
                     </Button>
                   ) : (

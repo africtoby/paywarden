@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.6.0) (utils/structs/CircularBuffer.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (utils/structs/CircularBuffer.sol)
+pragma solidity ^0.8.20;
 
-pragma solidity ^0.8.31;
-
-import {Arrays} from "../Arrays.sol";
 import {Math} from "../math/Math.sol";
+import {Arrays} from "../Arrays.sol";
 import {Panic} from "../Panic.sol";
 
 /**
@@ -17,13 +16,12 @@ import {Panic} from "../Panic.sol";
  * Elements can't be removed but the data structure can be cleared. See {clear}.
  *
  * Complexity:
- *
  * - insertion ({push}): O(1)
  * - lookup ({last}): O(1)
  * - inclusion ({includes}): O(N) (worst case)
  * - reset ({clear}): O(1)
  *
- * The struct is called `Bytes32CircularBuffer`. Other types can be cast to and from `bytes32`. This data structure
+ * * The struct is called `Bytes32CircularBuffer`. Other types can be cast to and from `bytes32`. This data structure
  * can only be used in storage, and not in memory.
  *
  * Example usage:
@@ -35,18 +33,8 @@ import {Panic} from "../Panic.sol";
  *
  *     // Declare a buffer storage variable
  *     CircularBuffer.Bytes32CircularBuffer private myBuffer;
- *
- *     constructor() {
- *         myBuffer.setup(16); // Initialize the buffer with a non-zero fixed size (e.g., 16)
- *     }
- *
- *     function pushValue(bytes32 value) external {
- *         myBuffer.push(value); // Safe to push because the buffer was initialized in the constructor
- *     }
  * }
  * ```
- *
- * NOTE: Make sure to call {setup} on your buffer during construction/initialization
  *
  * _Available since v5.1._
  */
@@ -74,7 +62,7 @@ library CircularBuffer {
     }
 
     /**
-     * @dev Initialize a new CircularBuffer of a given size.
+     * @dev Initialize a new CircularBuffer of given size.
      *
      * If the CircularBuffer was already setup and used, calling that function again will reset it to a blank state.
      *
@@ -82,7 +70,7 @@ library CircularBuffer {
      * Consider a large buffer size may render the function unusable.
      */
     function setup(Bytes32CircularBuffer storage self, uint256 size) internal {
-        require(size != 0, InvalidBufferSize());
+        if (size == 0) revert InvalidBufferSize();
         clear(self);
         Arrays.unsafeSetLength(self._data, size);
     }

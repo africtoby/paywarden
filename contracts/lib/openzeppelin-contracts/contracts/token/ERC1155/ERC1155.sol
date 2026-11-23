@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.6.0) (token/ERC1155/ERC1155.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (token/ERC1155/ERC1155.sol)
 
-pragma solidity ^0.8.31;
+pragma solidity ^0.8.20;
 
-import {IERC1155Errors} from "../../interfaces/IERC6093.sol";
-import {Arrays} from "../../utils/Arrays.sol";
+import {IERC1155} from "./IERC1155.sol";
+import {IERC1155MetadataURI} from "./extensions/IERC1155MetadataURI.sol";
+import {ERC1155Utils} from "./utils/ERC1155Utils.sol";
 import {Context} from "../../utils/Context.sol";
 import {IERC165, ERC165} from "../../utils/introspection/ERC165.sol";
-import {IERC1155MetadataURI} from "./extensions/IERC1155MetadataURI.sol";
-import {IERC1155} from "./IERC1155.sol";
-import {ERC1155Utils} from "./utils/ERC1155Utils.sol";
+import {Arrays} from "../../utils/Arrays.sol";
+import {IERC1155Errors} from "../../interfaces/draft-IERC6093.sol";
 
 /**
  * @dev Implementation of the basic standard multi-token.
@@ -34,7 +34,9 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
         _setURI(uri_);
     }
 
-    /// @inheritdoc IERC165
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
         return
             interfaceId == type(IERC1155).interfaceId ||
@@ -56,7 +58,9 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
         return _uri;
     }
 
-    /// @inheritdoc IERC1155
+    /**
+     * @dev See {IERC1155-balanceOf}.
+     */
     function balanceOf(address account, uint256 id) public view virtual returns (uint256) {
         return _balances[id][account];
     }
@@ -85,23 +89,34 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
         return batchBalances;
     }
 
-    /// @inheritdoc IERC1155
+    /**
+     * @dev See {IERC1155-setApprovalForAll}.
+     */
     function setApprovalForAll(address operator, bool approved) public virtual {
         _setApprovalForAll(_msgSender(), operator, approved);
     }
 
-    /// @inheritdoc IERC1155
+    /**
+     * @dev See {IERC1155-isApprovedForAll}.
+     */
     function isApprovedForAll(address account, address operator) public view virtual returns (bool) {
         return _operatorApprovals[account][operator];
     }
 
-    /// @inheritdoc IERC1155
+    /**
+     * @dev See {IERC1155-safeTransferFrom}.
+     */
     function safeTransferFrom(address from, address to, uint256 id, uint256 value, bytes memory data) public virtual {
-        _checkAuthorized(_msgSender(), from);
+        address sender = _msgSender();
+        if (from != sender && !isApprovedForAll(from, sender)) {
+            revert ERC1155MissingApprovalForAll(sender, from);
+        }
         _safeTransferFrom(from, to, id, value, data);
     }
 
-    /// @inheritdoc IERC1155
+    /**
+     * @dev See {IERC1155-safeBatchTransferFrom}.
+     */
     function safeBatchTransferFrom(
         address from,
         address to,
@@ -109,13 +124,11 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
         uint256[] memory values,
         bytes memory data
     ) public virtual {
-        _checkAuthorized(_msgSender(), from);
+        address sender = _msgSender();
+        if (from != sender && !isApprovedForAll(from, sender)) {
+            revert ERC1155MissingApprovalForAll(sender, from);
+        }
         _safeBatchTransferFrom(from, to, ids, values, data);
-    }
-
-    /// @dev Checks if `operator` is authorized to transfer tokens owned by `owner`. Reverts with {ERC1155MissingApprovalForAll} if not.
-    function _checkAuthorized(address operator, address owner) internal view virtual {
-        require(owner == operator || isApprovedForAll(owner, operator), ERC1155MissingApprovalForAll(operator, owner));
     }
 
     /**
@@ -145,7 +158,9 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
 
             if (from != address(0)) {
                 uint256 fromBalance = _balances[id][from];
-                require(fromBalance >= value, ERC1155InsufficientBalance(from, fromBalance, value, id));
+                if (fromBalance < value) {
+                    revert ERC1155InsufficientBalance(from, fromBalance, value, id);
+                }
                 unchecked {
                     // Overflow not possible: value <= fromBalance
                     _balances[id][from] = fromBalance - value;
@@ -174,9 +189,6 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
      * IMPORTANT: Overriding this function is discouraged because it poses a reentrancy risk from the receiver. So any
      * update to the contract state after this function would break the check-effect-interaction pattern. Consider
      * overriding {_update} instead.
-     *
-     * NOTE: This version is kept for backward compatibility. We recommend calling the alternative version with a boolean
-     * flag in order to achieve better control over which hook to call.
      */
     function _updateWithAcceptanceCheck(
         address from,
@@ -185,35 +197,15 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
         uint256[] memory values,
         bytes memory data
     ) internal virtual {
-        _updateWithAcceptanceCheck(from, to, ids, values, data, ids.length != 1);
-    }
-
-    /**
-     * @dev Version of {_update} that performs the token acceptance check by calling
-     * {IERC1155Receiver-onERC1155Received} or {IERC1155Receiver-onERC1155BatchReceived} on the receiver address if it
-     * contains code (eg. is a smart contract at the moment of execution).
-     *
-     * IMPORTANT: Overriding this function is discouraged because it poses a reentrancy risk from the receiver. So any
-     * update to the contract state after this function would break the check-effect-interaction pattern. Consider
-     * overriding {_update} instead.
-     */
-    function _updateWithAcceptanceCheck(
-        address from,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory values,
-        bytes memory data,
-        bool batch
-    ) internal virtual {
         _update(from, to, ids, values);
         if (to != address(0)) {
             address operator = _msgSender();
-            if (batch) {
-                ERC1155Utils.checkOnERC1155BatchReceived(operator, from, to, ids, values, data);
-            } else {
+            if (ids.length == 1) {
                 uint256 id = ids.unsafeMemoryAccess(0);
                 uint256 value = values.unsafeMemoryAccess(0);
                 ERC1155Utils.checkOnERC1155Received(operator, from, to, id, value, data);
+            } else {
+                ERC1155Utils.checkOnERC1155BatchReceived(operator, from, to, ids, values, data);
             }
         }
     }
@@ -231,10 +223,14 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
      * acceptance magic value.
      */
     function _safeTransferFrom(address from, address to, uint256 id, uint256 value, bytes memory data) internal {
-        require(to != address(0), ERC1155InvalidReceiver(address(0)));
-        require(from != address(0), ERC1155InvalidSender(address(0)));
+        if (to == address(0)) {
+            revert ERC1155InvalidReceiver(address(0));
+        }
+        if (from == address(0)) {
+            revert ERC1155InvalidSender(address(0));
+        }
         (uint256[] memory ids, uint256[] memory values) = _asSingletonArrays(id, value);
-        _updateWithAcceptanceCheck(from, to, ids, values, data, false);
+        _updateWithAcceptanceCheck(from, to, ids, values, data);
     }
 
     /**
@@ -255,9 +251,13 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
         uint256[] memory values,
         bytes memory data
     ) internal {
-        require(to != address(0), ERC1155InvalidReceiver(address(0)));
-        require(from != address(0), ERC1155InvalidSender(address(0)));
-        _updateWithAcceptanceCheck(from, to, ids, values, data, true);
+        if (to == address(0)) {
+            revert ERC1155InvalidReceiver(address(0));
+        }
+        if (from == address(0)) {
+            revert ERC1155InvalidSender(address(0));
+        }
+        _updateWithAcceptanceCheck(from, to, ids, values, data);
     }
 
     /**
@@ -295,9 +295,11 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
      * acceptance magic value.
      */
     function _mint(address to, uint256 id, uint256 value, bytes memory data) internal {
-        require(to != address(0), ERC1155InvalidReceiver(address(0)));
+        if (to == address(0)) {
+            revert ERC1155InvalidReceiver(address(0));
+        }
         (uint256[] memory ids, uint256[] memory values) = _asSingletonArrays(id, value);
-        _updateWithAcceptanceCheck(address(0), to, ids, values, data, false);
+        _updateWithAcceptanceCheck(address(0), to, ids, values, data);
     }
 
     /**
@@ -313,8 +315,10 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
      * acceptance magic value.
      */
     function _mintBatch(address to, uint256[] memory ids, uint256[] memory values, bytes memory data) internal {
-        require(to != address(0), ERC1155InvalidReceiver(address(0)));
-        _updateWithAcceptanceCheck(address(0), to, ids, values, data, true);
+        if (to == address(0)) {
+            revert ERC1155InvalidReceiver(address(0));
+        }
+        _updateWithAcceptanceCheck(address(0), to, ids, values, data);
     }
 
     /**
@@ -328,9 +332,11 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
      * - `from` must have at least `value` amount of tokens of type `id`.
      */
     function _burn(address from, uint256 id, uint256 value) internal {
-        require(from != address(0), ERC1155InvalidSender(address(0)));
+        if (from == address(0)) {
+            revert ERC1155InvalidSender(address(0));
+        }
         (uint256[] memory ids, uint256[] memory values) = _asSingletonArrays(id, value);
-        _updateWithAcceptanceCheck(from, address(0), ids, values, "", false);
+        _updateWithAcceptanceCheck(from, address(0), ids, values, "");
     }
 
     /**
@@ -345,8 +351,10 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
      * - `ids` and `values` must have the same length.
      */
     function _burnBatch(address from, uint256[] memory ids, uint256[] memory values) internal {
-        require(from != address(0), ERC1155InvalidSender(address(0)));
-        _updateWithAcceptanceCheck(from, address(0), ids, values, "", true);
+        if (from == address(0)) {
+            revert ERC1155InvalidSender(address(0));
+        }
+        _updateWithAcceptanceCheck(from, address(0), ids, values, "");
     }
 
     /**
@@ -356,12 +364,12 @@ abstract contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI, IER
      *
      * Requirements:
      *
-     * - `owner` cannot be the zero address.
      * - `operator` cannot be the zero address.
      */
     function _setApprovalForAll(address owner, address operator, bool approved) internal virtual {
-        require(owner != address(0), ERC1155InvalidApprover(address(0)));
-        require(operator != address(0), ERC1155InvalidOperator(address(0)));
+        if (operator == address(0)) {
+            revert ERC1155InvalidOperator(address(0));
+        }
         _operatorApprovals[owner][operator] = approved;
         emit ApprovalForAll(owner, operator, approved);
     }

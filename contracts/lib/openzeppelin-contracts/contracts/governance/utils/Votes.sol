@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.7.0) (governance/utils/Votes.sol)
-
-pragma solidity ^0.8.31;
+// OpenZeppelin Contracts (last updated v5.1.0) (governance/utils/Votes.sol)
+pragma solidity ^0.8.20;
 
 import {IERC5805} from "../../interfaces/IERC5805.sol";
 import {Context} from "../../utils/Context.sol";
-import {ECDSA} from "../../utils/cryptography/ECDSA.sol";
-import {EIP712} from "../../utils/cryptography/EIP712.sol";
-import {ERC6372Utils} from "../../utils/ERC6372Utils.sol";
-import {SafeCast} from "../../utils/math/SafeCast.sol";
 import {Nonces} from "../../utils/Nonces.sol";
+import {EIP712} from "../../utils/cryptography/EIP712.sol";
 import {Checkpoints} from "../../utils/structs/Checkpoints.sol";
+import {SafeCast} from "../../utils/math/SafeCast.sol";
+import {ECDSA} from "../../utils/cryptography/ECDSA.sol";
 import {Time} from "../../utils/types/Time.sol";
 
 /**
@@ -44,6 +42,11 @@ abstract contract Votes is Context, EIP712, Nonces, IERC5805 {
     Checkpoints.Trace208 private _totalCheckpoints;
 
     /**
+     * @dev The clock was incorrectly modified.
+     */
+    error ERC6372InconsistentClock();
+
+    /**
      * @dev Lookup to future votes is not available.
      */
     error ERC5805FutureLookup(uint256 timepoint, uint48 clock);
@@ -61,16 +64,11 @@ abstract contract Votes is Context, EIP712, Nonces, IERC5805 {
      */
     // solhint-disable-next-line func-name-mixedcase
     function CLOCK_MODE() public view virtual returns (string memory) {
-        return ERC6372Utils.blockNumberClockMode(clock);
-    }
-
-    /**
-     * @dev Validate that a timepoint is in the past, and return it as a uint48.
-     */
-    function _validateTimepoint(uint256 timepoint) internal view returns (uint48) {
-        uint48 currentTimepoint = clock();
-        require(timepoint < currentTimepoint, ERC5805FutureLookup(timepoint, currentTimepoint));
-        return SafeCast.toUint48(timepoint);
+        // Check that the clock was not modified
+        if (clock() != Time.blockNumber()) {
+            revert ERC6372InconsistentClock();
+        }
+        return "mode=blocknumber&from=default";
     }
 
     /**
@@ -89,7 +87,11 @@ abstract contract Votes is Context, EIP712, Nonces, IERC5805 {
      * - `timepoint` must be in the past. If operating using block numbers, the block must be already mined.
      */
     function getPastVotes(address account, uint256 timepoint) public view virtual returns (uint256) {
-        return _delegateCheckpoints[account].upperLookupRecent(_validateTimepoint(timepoint));
+        uint48 currentTimepoint = clock();
+        if (timepoint >= currentTimepoint) {
+            revert ERC5805FutureLookup(timepoint, currentTimepoint);
+        }
+        return _delegateCheckpoints[account].upperLookupRecent(SafeCast.toUint48(timepoint));
     }
 
     /**
@@ -105,7 +107,11 @@ abstract contract Votes is Context, EIP712, Nonces, IERC5805 {
      * - `timepoint` must be in the past. If operating using block numbers, the block must be already mined.
      */
     function getPastTotalSupply(uint256 timepoint) public view virtual returns (uint256) {
-        return _totalCheckpoints.upperLookupRecent(_validateTimepoint(timepoint));
+        uint48 currentTimepoint = clock();
+        if (timepoint >= currentTimepoint) {
+            revert ERC5805FutureLookup(timepoint, currentTimepoint);
+        }
+        return _totalCheckpoints.upperLookupRecent(SafeCast.toUint48(timepoint));
     }
 
     /**
@@ -141,7 +147,9 @@ abstract contract Votes is Context, EIP712, Nonces, IERC5805 {
         bytes32 r,
         bytes32 s
     ) public virtual {
-        require(block.timestamp <= expiry, VotesExpiredSignature(expiry));
+        if (block.timestamp > expiry) {
+            revert VotesExpiredSignature(expiry);
+        }
         address signer = ECDSA.recover(
             _hashTypedDataV4(keccak256(abi.encode(DELEGATION_TYPEHASH, delegatee, nonce, expiry))),
             v,
@@ -211,13 +219,13 @@ abstract contract Votes is Context, EIP712, Nonces, IERC5805 {
     }
 
     /**
-     * @dev Get the `index`-th checkpoint for `account`.
+     * @dev Get the `pos`-th checkpoint for `account`.
      */
     function _checkpoints(
         address account,
-        uint32 index
+        uint32 pos
     ) internal view virtual returns (Checkpoints.Checkpoint208 memory) {
-        return _delegateCheckpoints[account].pos(index);
+        return _delegateCheckpoints[account].at(pos);
     }
 
     function _push(
