@@ -1,5 +1,6 @@
 "use client";
 
+import { ConnectPrompt } from "@/components/connect-prompt";
 import { EventTimeline } from "@/components/event-timeline";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useVaultEvents } from "@/lib/use-logs";
@@ -21,7 +22,7 @@ export default function ActivityPage() {
   const v = useVault();
   const events = useVaultEvents(v.vault, v.policyAddress);
 
-  if (!v.isConnected) return <p className="pt-10 text-[16px] text-muted-foreground">Connect your wallet to see activity.</p>;
+  if (!v.isConnected) return <ConnectPrompt title={<>Connect your wallet to <em>see what happened.</em></>} copy="Every action on your vault, with a link to the explorer." />;
   if (v.loading || events.isLoading) return <ActivitySkeleton />;
   if (!v.hasVault) return <p className="pt-10 text-[16px] text-muted-foreground">Create your vault on the Overview page first.</p>;
 

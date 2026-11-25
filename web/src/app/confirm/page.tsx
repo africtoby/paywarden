@@ -8,7 +8,7 @@ import { Seal } from "@/components/seal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { payrollVaultAbi } from "@/lib/contracts";
-import { txUrl } from "@/lib/chain";
+import { addressUrl, txUrl } from "@/lib/chain";
 import { shortAddress, shortHash } from "@/lib/format";
 import { useTx } from "@/lib/use-tx";
 
@@ -70,6 +70,9 @@ export default function ConfirmPage() {
             <Seal key={done ? "done" : "open"} address={done ? address : undefined} size={96} animate className="text-[var(--forest-900)] dark:text-[var(--mist)]" />
             <p className="meta text-muted-foreground">Confirmation of payee</p>
             <h1 className="text-[28px] leading-tight">{invite.name}</h1>
+            <a href={addressUrl(invite.vault)} target="_blank" rel="noreferrer" className="font-mono text-[12px] text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
+              Invited by vault {shortAddress(invite.vault)}
+            </a>
 
             {done ? (
               <div role="status" className="grid justify-items-center gap-2">
@@ -86,6 +89,7 @@ export default function ConfirmPage() {
                 <p className="max-w-sm text-[16px] text-muted-foreground">
                   Your employer invited you to be paid in tUSD8. Confirming links the wallet you are connected with to this name. Only that wallet will ever receive your pay.
                 </p>
+                <p className="max-w-sm text-[14px] text-muted-foreground">Confirming is one transaction and needs a little tQDAY in this wallet for the network fee.</p>
                 {isConnected && address && (
                   <p className="font-mono text-[12px] text-muted-foreground">Connected as {shortAddress(address)}</p>
                 )}

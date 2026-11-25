@@ -30,9 +30,9 @@ export function PaydayTimeline() {
           <span className="absolute -left-10 top-1.5 grid size-[15px] place-items-center rounded-full border border-[var(--forest-900)] bg-[var(--paper)]" aria-hidden>
             <span className="size-[5px] rounded-full bg-[var(--forest-900)]" />
           </span>
-          <span className="tnum font-mono text-[13px] text-[var(--ink)]/50">{t}</span>
+          <span className="tnum font-mono text-[13px] text-[var(--ink)]/68">{t}</span>
           <span className="font-serif text-[22px]">{s}</span>
-          <span className="max-w-md text-[16px] text-[var(--ink)]/65">{d}</span>
+          <span className="max-w-md text-[16px] text-[var(--ink)]/68">{d}</span>
         </li>
       ))}
     </ol>

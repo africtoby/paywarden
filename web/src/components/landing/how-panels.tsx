@@ -14,11 +14,11 @@ export function HowPanels() {
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
       <article className="flex flex-col rounded-[22px] border border-[var(--ink)]/8 bg-[var(--paper-2)] p-6">
         <h3 className="text-[26px]">Invite</h3>
-        <p className="mt-2 text-[15px] text-[var(--ink)]/65">
+        <p className="mt-2 text-[15px] text-[var(--ink)]/68">
           Each payee confirms with their own wallet and gets a seal drawn from it. Same wallet, same seal, every payday.
         </p>
         <div className="mt-auto pt-6">
-          <label htmlFor={id} className="text-[13px] text-[var(--ink)]/55">
+          <label htmlFor={id} className="text-[13px] text-[var(--ink)]/68">
             Type a name to draw its seal
           </label>
           <div className="mt-2 flex items-center gap-4">
@@ -36,7 +36,7 @@ export function HowPanels() {
 
       <article className="flex flex-col rounded-[22px] border border-[var(--ink)]/8 bg-[var(--paper-2)] p-6">
         <h3 className="text-[26px]">Draft</h3>
-        <p className="mt-2 text-[15px] text-[var(--ink)]/65">
+        <p className="mt-2 text-[15px] text-[var(--ink)]/68">
           Your assistant reads the timesheet and drafts the run. It can only propose. It can never approve or pay.
         </p>
         <div className="mt-auto pt-6">
@@ -49,14 +49,14 @@ export function HowPanels() {
 
       <article className="flex flex-col rounded-[22px] border border-[var(--ink)]/8 bg-[var(--paper-2)] p-6">
         <h3 className="text-[26px]">Sign</h3>
-        <p className="mt-2 text-[15px] text-[var(--ink)]/65">
+        <p className="mt-2 text-[15px] text-[var(--ink)]/68">
           The contract checks every draft against your limits. You review it, sign once, and everyone is paid.
         </p>
         <div className="mt-auto pt-6">
           <div className="border-b border-[var(--ink)]/20 pb-1">
             <SignatureMark name="Ama Mensah" animate={false} className="text-[44px] text-[var(--forest-900)]" />
           </div>
-          <p className="mt-2 font-mono text-[11px] text-[var(--ink)]/50">Signed · 1,450 tUSD8 paid</p>
+          <p className="mt-2 font-mono text-[12px] text-[var(--ink)]/68">Signed · 1,450 tUSD8 paid</p>
         </div>
       </article>
     </div>

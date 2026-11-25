@@ -1,5 +1,6 @@
 "use client";
 
+import { ConnectPrompt } from "@/components/connect-prompt";
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Sweep } from "@/components/sweep";
@@ -42,7 +43,7 @@ export default function AssistantPage() {
   const [confirmOff, setConfirmOff] = useState(false);
   const reduce = useReducedMotion();
 
-  if (!v.isConnected) return <p className="pt-10 text-[16px] text-muted-foreground">Connect your wallet to manage your assistant.</p>;
+  if (!v.isConnected) return <ConnectPrompt title={<>Connect your wallet to <em>manage your assistant.</em></>} copy="Set what your assistant may draft, and switch it off any time." />;
   if (v.loading)
     return (
       <div aria-busy="true" className="pt-4">

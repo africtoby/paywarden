@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useReadContracts } from "wagmi";
 import type { Address, Hex } from "viem";
+import { ConnectPrompt } from "@/components/connect-prompt";
 import { PaidCelebration } from "@/components/paid-celebration";
 import { RippleField, type RippleHandle } from "@/components/landing/ripple-field";
 import { ReviewRing } from "@/components/review-ring";
@@ -12,6 +13,9 @@ import { Seal } from "@/components/seal";
 import { SignatureMark } from "@/components/signature-mark";
 import { StatusChip, type ChipKind } from "@/components/status-chip";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { payrollVaultAbi, RUN_STATUS, TOKEN_SYMBOL, type RunStatus } from "@/lib/contracts";
 import { txUrl } from "@/lib/chain";
@@ -129,7 +133,25 @@ export default function RunsPage() {
   const [names, setNames] = useState<Map<string, string>>(new Map());
   const [pending, setPending] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState<Hex | null>(null);
+  const [payFor, setPayFor] = useState<Hex | null>(null);
+  const [cancelFor, setCancelFor] = useState<Hex | null>(null);
+  const [ownerName, setOwnerName] = useState("");
   const reduce = useReducedMotion();
+
+  // The name written as the signature lives only in this browser, like the payee names.
+  const nameKey = v.vault ? `paywarden:owner-name:${v.vault.toLowerCase()}` : null;
+  useEffect(() => {
+    if (!nameKey) return;
+    try {
+      queueMicrotask(() => setOwnerName(localStorage.getItem(nameKey) ?? ""));
+    } catch {}
+  }, [nameKey]);
+  const saveOwnerName = (value: string) => {
+    setOwnerName(value);
+    try {
+      if (nameKey) localStorage.setItem(nameKey, value);
+    } catch {}
+  };
 
   const act = async (id: string, label: string, req: Parameters<typeof tx>[1]) => {
     setPending(id);
@@ -143,6 +165,33 @@ export default function RunsPage() {
     // The signature and the fan play first; the PAID chip lands when they are done (see the effect below).
     setCelebrate(key);
   };
+
+  // Cancelling cannot be undone, so it takes a second click and stays out of the way of the primary button.
+  const cancelControl = (key: Hex, vault: Address) =>
+    cancelFor === key ? (
+      <div role="group" aria-label="Confirm cancel" className="flex flex-wrap items-center gap-2 text-[14px]">
+        <span>Cancel this run?</span>
+        <ActionButton
+          pending={pending === `${key}:cancel`}
+          busyLabel="Cancelling…"
+          variant="outline"
+          disabled={!!pending}
+          onClick={async () => {
+            await act(`${key}:cancel`, "Cancel run", { address: vault, abi: payrollVaultAbi, functionName: "cancelRun", args: [key] });
+            setCancelFor(null);
+          }}
+        >
+          Yes, cancel it
+        </ActionButton>
+        <Button variant="ghost" size="sm" className="rounded-full" disabled={!!pending} onClick={() => setCancelFor(null)}>
+          Keep it
+        </Button>
+      </div>
+    ) : (
+      <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground underline underline-offset-4" disabled={!!pending} onClick={() => setCancelFor(key)}>
+        Cancel run
+      </Button>
+    );
 
   useEffect(() => {
     const vault = v.vault;
@@ -187,6 +236,8 @@ export default function RunsPage() {
     return m;
   }, [events.data]);
 
+  const payRun = runs.find((r) => r.runKey === payFor);
+
   // The celebration starts once the chain shows the run as paid and lasts 1.25s.
   const celebrateStatus = runs.find((r) => r.runKey === celebrate)?.status;
   useEffect(() => {
@@ -195,7 +246,7 @@ export default function RunsPage() {
     return () => clearTimeout(t);
   }, [celebrate, celebrateStatus, reduce]);
 
-  if (!v.isConnected) return <p className="pt-10 text-[16px] text-muted-foreground">Connect your wallet to see runs.</p>;
+  if (!v.isConnected) return <ConnectPrompt title={<>Connect your wallet to <em>see your runs.</em></>} copy="Drafts from your assistant wait here for your review and signature." />;
   if (v.loading || events.isLoading || (keys.length > 0 && details.isLoading)) return <RunsSkeleton />;
   if (!v.hasVault || !v.vault) return <p className="pt-10 text-[16px] text-muted-foreground">Create your vault on the Overview page first.</p>;
 
@@ -345,9 +396,9 @@ export default function RunsPage() {
                     <section aria-label="Actions" className="flex flex-wrap items-start gap-3 self-start">
                       {r.status === "Executed" && (
                         <div className="grid gap-1">
-                          <SignatureMark name={v.address ? shortAddress(v.address) : "Signed"} className="text-[56px] text-[var(--forest-900)] dark:text-[var(--gold)]" />
+                          <SignatureMark name={ownerName.trim() || (v.address ? shortAddress(v.address) : "Signed")} className="text-[56px] text-[var(--forest-900)] dark:text-[var(--gold)]" />
                           <p className="font-mono text-[11px] text-muted-foreground">
-                            Signed and paid · {formatAmount(r.total)} {TOKEN_SYMBOL}
+                            Signed and paid{v.address ? ` by ${shortAddress(v.address)}` : ""} · {formatAmount(r.total)} {TOKEN_SYMBOL}
                           </p>
                           {paidTx && (
                             <a href={txUrl(paidTx.txHash)} target="_blank" rel="noreferrer" className="w-fit font-mono text-[12px] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
@@ -374,9 +425,7 @@ export default function RunsPage() {
                           <ActionButton pending={pending === `${r.runKey}:approve`} busyLabel="Approving…" disabled={refused || !!pending} onClick={() => act(`${r.runKey}:approve`, "Approve run", { address: vault, abi: payrollVaultAbi, functionName: "approveRun", args: [r.runKey] })}>
                             Approve
                           </ActionButton>
-                          <ActionButton pending={pending === `${r.runKey}:cancel`} busyLabel="Cancelling…" variant="outline" disabled={!!pending} onClick={() => act(`${r.runKey}:cancel`, "Cancel run", { address: vault, abi: payrollVaultAbi, functionName: "cancelRun", args: [r.runKey] })}>
-                            Cancel
-                          </ActionButton>
+                          {cancelControl(r.runKey, vault)}
                         </>
                       )}
                       {r.status === "Approved" && (
@@ -385,13 +434,11 @@ export default function RunsPage() {
                             pending={pending === `${r.runKey}:pay`}
                             busyLabel="Signing and paying…"
                             disabled={now === 0 || now < r.executableAt || refused || !!pending}
-                            onClick={() => signAndPay(r.runKey, { address: vault, abi: payrollVaultAbi, functionName: "executeRun", args: [r.runKey] })}
+                            onClick={() => setPayFor(r.runKey)}
                           >
                             Sign and pay
                           </ActionButton>
-                          <ActionButton pending={pending === `${r.runKey}:cancel`} busyLabel="Cancelling…" variant="outline" disabled={!!pending} onClick={() => act(`${r.runKey}:cancel`, "Cancel run", { address: vault, abi: payrollVaultAbi, functionName: "cancelRun", args: [r.runKey] })}>
-                            Cancel
-                          </ActionButton>
+                          {cancelControl(r.runKey, vault)}
                         </>
                       )}
                       {live && now > 0 && (
@@ -412,6 +459,47 @@ export default function RunsPage() {
           })}
         </ul>
       )}
+
+      <Dialog open={!!payRun} onOpenChange={(open) => !open && setPayFor(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Review and sign</DialogTitle>
+            <DialogDescription>
+              {payRun ? `You are paying ${payRun.payeeIds.length} ${payRun.payeeIds.length === 1 ? "person" : "people"} ${formatAmount(payRun.total)} ${TOKEN_SYMBOL} from your vault. This cannot be undone.` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {payRun && (
+            <ul className="divide-y divide-border text-[14px]">
+              {payRun.payeeIds.map((id, i) => (
+                <li key={id} className="flex items-center gap-3 py-2.5">
+                  <span className="min-w-0 flex-1 truncate font-serif text-[16px]">{names.get(id) ?? shortHash(id)}</span>
+                  <span className="font-mono text-[12px] text-muted-foreground">{wallets.get(id) ? shortAddress(wallets.get(id)!) : "No wallet"}</span>
+                  <span className="tnum font-serif text-[16px]">{formatAmount(payRun.amounts[i])}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="grid gap-1.5">
+            <Label htmlFor="owner-name">Name for your signature</Label>
+            <Input id="owner-name" value={ownerName} maxLength={40} onChange={(e) => saveOwnerName(e.target.value)} placeholder={v.address ? shortAddress(v.address) : "Your name"} />
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" className="rounded-full" />}>Not yet</DialogClose>
+            <Button
+              className="rounded-full"
+              disabled={!payRun || !!pending}
+              onClick={() => {
+                if (!payRun || !v.vault) return;
+                const key = payRun.runKey;
+                setPayFor(null);
+                void signAndPay(key, { address: v.vault, abi: payrollVaultAbi, functionName: "executeRun", args: [key] });
+              }}
+            >
+              Sign and pay
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

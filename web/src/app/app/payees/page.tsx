@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 import type { Address, Hex } from "viem";
+import { ConnectPrompt } from "@/components/connect-prompt";
 import { Seal } from "@/components/seal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,7 +116,7 @@ export default function PayeesPage() {
     }
   };
 
-  if (!v.isConnected) return <p className="pt-10 text-[16px] text-muted-foreground">Connect your wallet to manage payees.</p>;
+  if (!v.isConnected) return <ConnectPrompt title={<>Connect your wallet to <em>manage your payees.</em></>} copy="Invite people by name. They confirm with their own wallet." />;
   if (v.loading)
     return (
       <div aria-busy="true" className="grid gap-8 pt-4">

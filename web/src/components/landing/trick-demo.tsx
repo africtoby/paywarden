@@ -73,7 +73,7 @@ export function TrickDemo() {
               onClick={() => pick(s)}
               className={cn(
                 "rounded-full px-4 py-1.5 text-[14px] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--forest-900)]",
-                sheet === s ? "bg-[var(--forest-900)] text-[var(--mist)]" : "text-[var(--ink)]/60 hover:text-[var(--ink)]",
+                sheet === s ? "bg-[var(--forest-900)] text-[var(--mist)]" : "text-[var(--ink)]/68 hover:text-[var(--ink)]",
               )}
             >
               {s === "honest" ? "Honest timesheet" : "Poisoned timesheet"}
@@ -82,7 +82,7 @@ export function TrickDemo() {
         </div>
 
         <pre className="mt-5 overflow-x-auto font-mono text-[12.5px] leading-[1.9] text-[var(--ink)]/80">
-          <span className="text-[var(--ink)]/45"># november.csv{"\n"}</span>
+          <span className="text-[var(--ink)]/68"># november.csv{"\n"}</span>
           {"name,           hours, rate\n"}
           {"Ada Okonkwo,    40,    15.00\n"}
           {"Kemi Adeyemi,   30,    15.00\n"}
@@ -103,7 +103,7 @@ export function TrickDemo() {
           {drafted ? "Draft sent to the contract" : "Ask the assistant to draft"}
         </button>
         {sheet === "poisoned" && (
-          <p className="mt-3 text-[13px] text-[var(--ink)]/55">The assistant gets fooled on purpose here. Watch what the contract does.</p>
+          <p className="mt-3 text-[13px] text-[var(--ink)]/68">The assistant gets fooled on purpose here. Watch what the contract does.</p>
         )}
       </div>
 

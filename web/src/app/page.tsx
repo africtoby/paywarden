@@ -20,6 +20,9 @@ const goldCta =
 export default function Landing() {
   return (
     <div className="bg-[var(--paper)] text-[var(--ink)]">
+      <noscript>
+        <style>{"[data-w]{transform:none!important}"}</style>
+      </noscript>
       {/* Hero */}
       <section className="relative overflow-hidden bg-[var(--forest-950)] text-[var(--mist)]">
         <ParticleSeal className="absolute -right-[14%] -top-[18%] size-[min(980px,95vw)] opacity-70" />
@@ -66,7 +69,7 @@ export default function Landing() {
           <RevealHeading id="how" className="max-w-xl text-[clamp(34px,4vw,48px)] leading-[1.05] tracking-[-0.02em]">
             Three moves, and only one of them is yours.
           </RevealHeading>
-          <p className="max-w-sm text-[16px] text-[var(--ink)]/60">Payees vouch for their wallets. The assistant does the paperwork. You keep the pen.</p>
+          <p className="max-w-sm text-[16px] text-[var(--ink)]/68">Payees vouch for their wallets. The assistant does the paperwork. You keep the pen.</p>
         </div>
         <div className="mt-12">
           <HowPanels />

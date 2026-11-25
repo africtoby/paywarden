@@ -102,7 +102,7 @@ export function PayslipFan() {
         <RevealHeading id="fan" className="max-w-xl text-[clamp(34px,4vw,48px)] leading-[1.05] tracking-[-0.02em]">
           Everyone paid in <em className="font-light text-[var(--forest-900)] dark:text-[var(--gold)]">one signature.</em>
         </RevealHeading>
-        <p className="max-w-sm text-[16px] text-[var(--ink)]/60">One approval, one transaction, three payslips. Each carries the same hash, so anyone can check it.</p>
+        <p className="max-w-sm text-[16px] text-[var(--ink)]/68">One approval, one transaction, three payslips. Each carries the same hash, so anyone can check it.</p>
       </div>
       <div ref={stage} className="relative mt-10 h-[640px] md:h-[400px]">
         <PayslipStage slips={SLIPS} progress={p} narrow={narrow} className="absolute inset-0" />

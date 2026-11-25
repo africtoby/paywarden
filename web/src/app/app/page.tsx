@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { WalletButton } from "@/components/wallet-button";
+import { useState } from "react";
+import { ConnectPrompt } from "@/components/connect-prompt";
 import { zeroAddress } from "viem";
 import { AllowanceMeter } from "@/components/allowance-meter";
 import { BalanceCard } from "@/components/balance-card";
@@ -63,17 +64,10 @@ export default function Overview() {
   const v = useVault();
   const tx = useTx();
   const events = useVaultEvents(v.vault, v.policyAddress);
+  const [confirmPause, setConfirmPause] = useState(false);
 
   if (!v.isConnected) {
-    return (
-      <div className="max-w-xl pt-10">
-        <h1 className="page-title">Connect your wallet to <em>open your vault.</em></h1>
-        <p className="mt-3 text-[16px] text-muted-foreground">Use the wallet that owns the payroll. You stay in control of every payment.</p>
-        <div className="mt-6">
-          <WalletButton />
-        </div>
-      </div>
-    );
+    return <ConnectPrompt title={<>Connect your wallet to <em>open your vault.</em></>} copy="Use the wallet that owns the payroll. You stay in control of every payment." />;
   }
 
   if (v.loading) return <OverviewSkeleton />;
@@ -133,13 +127,33 @@ export default function Overview() {
               <Link href="/app/payees" className={buttonVariants({ className: "rounded-full" })}>
                 Add payees
               </Link>
-              <Button
-                variant="outline"
-                className="rounded-full"
-                onClick={() => tx(v.paused ? "Unpause vault" : "Pause vault", { address: v.vault!, abi: payrollVaultAbi, functionName: v.paused ? "unpause" : "pause" })}
-              >
-                {v.paused ? "Unpause" : "Pause everything"}
-              </Button>
+              {v.paused ? (
+                <Button variant="outline" className="rounded-full" onClick={() => tx("Unpause vault", { address: v.vault!, abi: payrollVaultAbi, functionName: "unpause" })}>
+                  Unpause
+                </Button>
+              ) : confirmPause ? (
+                <div role="group" aria-label="Confirm pause" className="flex flex-wrap items-center gap-2 text-[14px]">
+                  <span>Freeze proposing, approving and paying?</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={async () => {
+                      await tx("Pause vault", { address: v.vault!, abi: payrollVaultAbi, functionName: "pause" });
+                      setConfirmPause(false);
+                    }}
+                  >
+                    Yes, pause
+                  </Button>
+                  <Button variant="ghost" size="sm" className="rounded-full" onClick={() => setConfirmPause(false)}>
+                    Keep running
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="outline" className="rounded-full" onClick={() => setConfirmPause(true)}>
+                  Pause everything
+                </Button>
+              )}
             </div>
           </section>
         </div>

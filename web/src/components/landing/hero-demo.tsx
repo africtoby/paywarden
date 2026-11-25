@@ -118,7 +118,7 @@ export function HeroDemo() {
               {CHECK_LABELS.map((c, i) => {
                 const on = reached(phase, "checks");
                 return (
-                  <li key={c} className="flex items-center justify-between gap-3 font-mono text-[11.5px]">
+                  <li key={c} className="flex items-center justify-between gap-3 font-mono text-[12px]">
                     <span className="min-w-0 truncate text-[var(--mist)]/80">{c}</span>
                     <motion.span
                       initial={false}
@@ -148,7 +148,7 @@ export function HeroDemo() {
                     <motion.p
                       initial={false}
                       animate={{ opacity: reached(phase, "paid") ? 1 : 0 }}
-                      className="mt-1 font-mono text-[11px] text-[var(--sage)]"
+                      className="mt-1 font-mono text-[12px] text-[var(--sage)]"
                     >
                       Paid · tx 0x4e1c…b7a2 · example
                     </motion.p>

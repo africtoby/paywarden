@@ -275,3 +275,18 @@ html body [data-sonner-toaster] [data-sonner-toast] [data-description] {
   color: inherit;
   opacity: 0.78;
 }
+
+/* Even line breaks: no single word stranded on the last line. */
+h1, h2, h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+
+/* The landing's headings rise word by word once scripts run; never leave them hidden in print. */
+@media print {
+  [data-w] {
+    transform: none !important;
+  }
+}
