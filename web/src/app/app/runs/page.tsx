@@ -180,7 +180,10 @@ export default function RunsPage() {
   // payee wallets for seals
   const wallets = useMemo(() => {
     const m = new Map<string, Address>();
-    for (const e of events.data ?? []) if (e.name === "PayeeConfirmed") m.set(String(e.args.payeeId), e.args.wallet as Address);
+    for (const e of events.data ?? []) {
+      if (e.name === "PayeeConfirmed") m.set(String(e.args.payeeId), e.args.wallet as Address);
+      if (e.name === "PayeeRevoked") m.delete(String(e.args.payeeId));
+    }
     return m;
   }, [events.data]);
 
@@ -308,6 +311,9 @@ export default function RunsPage() {
                               ) : (
                                 <span className="font-mono text-[12px] text-[var(--sage)]">{shortHash(id)}</span>
                               )}
+                            </span>
+                            <span className="font-mono text-[12px] text-[var(--sage)]" title="Wallet that will be paid">
+                              {wallets.get(id) ? shortAddress(wallets.get(id)!) : "No wallet"}
                             </span>
                             <span className="tnum font-serif text-[16px]">{formatAmount(r.amounts[i])}</span>
                           </li>

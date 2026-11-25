@@ -46,6 +46,7 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
     uint64 public reviewWindow;
 
     mapping(bytes32 payeeId => bool) public invited;
+    mapping(bytes32 payeeId => bool) public revokedInvite;
     mapping(bytes32 payeeId => address) public payeeWallet;
     mapping(address wallet => bytes32) public walletPayee;
     mapping(bytes32 payeeId => uint256) public payeeIdentityId;
@@ -136,7 +137,7 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
     }
 
     function invitePayee(bytes32 payeeId) external onlyOwner {
-        if (invited[payeeId]) revert AlreadyInvited(payeeId);
+        if (invited[payeeId] || revokedInvite[payeeId]) revert AlreadyInvited(payeeId);
         invited[payeeId] = true;
         emit PayeeInvited(payeeId);
     }
@@ -154,12 +155,15 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
         emit PayeeConfirmed(payeeId, msg.sender, identityId);
     }
 
-    /// @notice Unlinks a payee's wallet (wrong wallet, lost key). The invite stays open, so the payee can confirm again.
+    /// @notice Unlinks a payee's wallet (wrong wallet, lost key) and closes the invite for good.
+    /// The salt is public after a confirm, so the same invite must never work again: invite with a new salt.
     function revokePayee(bytes32 payeeId) external onlyOwner {
         address wallet = payeeWallet[payeeId];
         if (wallet == address(0)) revert PayeeNotConfirmed(payeeId);
         delete payeeWallet[payeeId];
         delete walletPayee[wallet];
+        invited[payeeId] = false;
+        revokedInvite[payeeId] = true;
         emit PayeeRevoked(payeeId, wallet);
     }
 

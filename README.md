@@ -9,7 +9,7 @@ Built for the Aevum Builder Challenge #1 (QDay, DoraHacks). All settlement happe
 ## How it works
 
 1. **Vault.** An employer creates a vault through the factory and deposits tUSD8.
-2. **Confirmation of payee.** The employer invites a payee by a hash of their name and a secret salt. The payee opens an invite link and confirms with their own wallet, which links that wallet to the name and registers it in an ERC-8004 style identity registry. A wrong wallet can be unlinked by the owner (`revokePayee`).
+2. **Confirmation of payee.** The employer invites a payee by a hash of their name and a secret salt. The payee opens an invite link and confirms with their own wallet, which links that wallet to the name and registers it in an ERC-8004 style identity registry. The owner can unlink a wrong wallet with `revokePayee`, which also retires that invite, so a new invite with a fresh salt is needed.
 3. **Assistant permissions.** A separate policy contract holds the assistant's address, a per-run cap, a per-person cap, a period cap with its period, an expiry, and a revoke switch.
 4. **Propose.** The assistant calls `proposeRun(payeeIds, amounts, memoHash)`. The contract rejects anything outside the policy with a named error.
 5. **Review window.** Every run waits for the review window, counted from when it was proposed.
@@ -37,7 +37,7 @@ Every rejection is a custom error and every action emits an event. The web app t
 | Contract | Address |
 | --- | --- |
 | tUSD8 | [0x456569838f1d43009A91ebA4263147Afd7233483](https://explorer-test.qday.info/address/0x456569838f1d43009A91ebA4263147Afd7233483) |
-| PayrollVaultFactory (verified) | [0x9cE6f91fCd725A4F54083469fBe170Ae1930cE41](https://explorer-test.qday.info/address/0x9cE6f91fCd725A4F54083469fBe170Ae1930cE41) |
+| PayrollVaultFactory (verified) | [0xC12819acfEA15773cE49c001f6F23842cc4480DA](https://explorer-test.qday.info/address/0xC12819acfEA15773cE49c001f6F23842cc4480DA) |
 | IdentityRegistry (verified) | [0x65b0B1df79B5A61021feF2BfA489a49A6b646F85](https://explorer-test.qday.info/address/0x65b0B1df79B5A61021feF2BfA489a49A6b646F85) |
 
 The contracts are compiled for the Shanghai EVM because Aevum does not run the newer `MCOPY` instruction.
@@ -117,6 +117,8 @@ The integration test needs `anvil` and a built `contracts/out` (`forge build`). 
 - The assistant key can only call `proposeRun`. It cannot approve, pay, withdraw or change limits.
 - Caps are enforced on-chain at proposal time and again at payment time.
 - Payee names and salts stay in the employer's browser; the chain stores only the hash.
+- Confirmation of payee is secret-based: whoever submits the name and salt first is bound. A watcher of pending transactions could copy a payee's confirm. Check the wallet shown next to each payee on the run card before you approve. Binding the invite to a wallet is a possible future change.
+- Confirmation of payee is secret-based: whoever submits the name and salt first is bound. A watcher of pending transactions could copy a payee's confirm. Check the wallet shown next to each payee on the run card before you approve. Binding the invite to a wallet is a possible future change.
 - Test tokens and test wallets only. This code has not been audited.
 
 ## Licence

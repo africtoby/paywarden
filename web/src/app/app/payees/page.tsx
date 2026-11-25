@@ -79,10 +79,27 @@ export default function PayeesPage() {
     setName("");
   };
 
+  // The old salt is public once a payee has confirmed, so unlinking also retires the invite and issues a new one.
   const unlink = async (i: Invite) => {
     if (!v.vault) return;
     setBusy(true);
-    await tx(`Unlink ${i.name}'s wallet`, { address: v.vault, abi: payrollVaultAbi, functionName: "revokePayee", args: [i.id] });
+    const revoked = await tx(`Unlink ${i.name}'s wallet`, { address: v.vault, abi: payrollVaultAbi, functionName: "revokePayee", args: [i.id] });
+    if (revoked) {
+      const salt = randomSalt();
+      const id = payeeId(i.name, salt);
+      const invited = await tx(`New invite for ${i.name}`, { address: v.vault, abi: payrollVaultAbi, functionName: "invitePayee", args: [id] });
+      if (invited) {
+        const next = invites.map((x) => (x.id === i.id ? { name: i.name, salt, id } : x));
+        setInvites(next);
+        try {
+          localStorage.setItem(storeKey(v.vault), JSON.stringify(next));
+        } catch {
+          toast.warning("Copy the new invite link now: this browser could not save it.");
+        }
+      } else {
+        toast.error(`${i.name}'s wallet is unlinked, but the new invite was not sent.`, { description: "Add them again from Invite a payee." });
+      }
+    }
     setBusy(false);
   };
 
@@ -183,7 +200,7 @@ export default function PayeesPage() {
                     <StatusChip kind={wallet ? "signed" : "awaiting"}>{wallet ? "Confirmed" : "Invited"}</StatusChip>
                     {wallet && (
                       <Button variant="outline" size="sm" className="rounded-full" disabled={busy} onClick={() => unlink(i)}>
-                        Unlink wallet
+                        Unlink and re-invite
                       </Button>
                     )}
                     {!wallet && (

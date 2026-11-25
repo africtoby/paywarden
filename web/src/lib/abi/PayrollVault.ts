@@ -400,6 +400,25 @@ export const payrollVaultAbi = [
   },
   {
     "type": "function",
+    "name": "revokedInvite",
+    "inputs": [
+      {
+        "name": "payeeId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "runStatus",
     "inputs": [
       {

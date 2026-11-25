@@ -97,16 +97,40 @@ contract PayrollVaultTest is Base {
         vault.confirmPayee("Alice2", keccak256("a2"));
     }
 
-    function test_revoke_payee_unlinks_and_allows_reconfirm() public {
+    function test_revoke_payee_unlinks_and_closes_invite() public {
         vm.prank(employer);
         vault.revokePayee(aliceId);
         assertEq(vault.payeeWallet(aliceId), address(0));
         assertEq(vault.walletPayee(alice), bytes32(0));
-        assertTrue(vault.invited(aliceId));
+        assertFalse(vault.invited(aliceId));
+        assertTrue(vault.revokedInvite(aliceId));
+    }
 
-        vm.prank(stranger);
+    function test_revoked_wallet_cannot_confirm_again_with_old_salt() public {
+        vm.prank(employer);
+        vault.revokePayee(aliceId);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(PayrollVault.NotInvited.selector, aliceId));
         vault.confirmPayee("Alice", ALICE_SALT);
-        assertEq(vault.payeeWallet(aliceId), stranger);
+    }
+
+    function test_revoked_invite_cannot_be_reissued() public {
+        vm.startPrank(employer);
+        vault.revokePayee(aliceId);
+        vm.expectRevert(abi.encodeWithSelector(PayrollVault.AlreadyInvited.selector, aliceId));
+        vault.invitePayee(aliceId);
+        vm.stopPrank();
+    }
+
+    function test_reinvite_with_new_salt_after_revoke() public {
+        vm.prank(employer);
+        vault.revokePayee(aliceId);
+        bytes32 newSalt = keccak256("new salt");
+        bytes32 newId = vault.commitmentOf("Alice", newSalt);
+        _invite(newId);
+        vm.prank(stranger);
+        vault.confirmPayee("Alice", newSalt);
+        assertEq(vault.payeeWallet(newId), stranger);
     }
 
     function test_revoke_payee_emits_event() public {

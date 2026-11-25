@@ -16,10 +16,11 @@ Payees prove their wallet themselves (confirmation of payee), so nobody is paid 
 ## Links
 - Repository: https://github.com/africtoby/paywarden
 - Demo video: <add public link>
-- Factory: https://explorer-test.qday.info/address/0x9cE6f91fCd725A4F54083469fBe170Ae1930cE41
+- Factory: https://explorer-test.qday.info/address/0xC12819acfEA15773cE49c001f6F23842cc4480DA
 - IdentityRegistry: https://explorer-test.qday.info/address/0x65b0B1df79B5A61021feF2BfA489a49A6b646F85
 
 ## Known limits
 - Test tokens and test wallets only; not audited.
 - Payee names and salts are kept in the employer's browser; clearing it loses the invite links, not the on-chain confirmations.
+- Payee confirmation is secret-based, so a watcher could front-run the first confirm; the run card shows each payee's wallet for the owner to check before approving. Revoking a payee retires the invite.
 - ERC-4337 smart-account and paymaster support is not included.
