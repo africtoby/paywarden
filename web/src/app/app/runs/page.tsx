@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { payrollVaultAbi, RUN_STATUS, TOKEN_SYMBOL, type RunStatus } from "@/lib/contracts";
 import { txUrl } from "@/lib/chain";
-import { formatAmount, formatDuration, shortAddress, shortHash } from "@/lib/format";
+import { formatDuration, formatMoney, shortAddress, shortHash } from "@/lib/format";
 import { payeeNames } from "@/lib/payee";
 import { checkRun } from "@/lib/run-checks";
 import { useVaultEvents, type VaultEvent } from "@/lib/use-logs";
@@ -292,7 +292,7 @@ export default function RunsPage() {
               name: names.get(id) ?? shortHash(id),
               role: TOKEN_SYMBOL,
               wallet: wallets.get(id) ?? id,
-              amount: formatAmount(r.amounts[i]),
+              amount: formatMoney(r.amounts[i]),
               tx: paidTx ? shortHash(paidTx.txHash) : undefined,
             }));
             const start = proposed?.timestamp ?? 0;
@@ -319,7 +319,7 @@ export default function RunsPage() {
                     </p>
                   </div>
                   <span className="tnum font-serif text-[18px]">
-                    {formatAmount(r.total)} <span className="text-[13px] text-muted-foreground">{TOKEN_SYMBOL}</span>
+                    {formatMoney(r.total)}
                   </span>
                   <StatusChip kind={refused ? "refused" : celebrating ? "signed" : chip.kind}>{refused ? "REFUSED" : celebrating ? "SIGNED" : chip.text}</StatusChip>
                 </button>
@@ -350,7 +350,7 @@ export default function RunsPage() {
 
                     <section aria-label="Draft" className="panel-dark rounded-2xl border border-border p-5">
                       <p className="text-[16px]">
-                        Pay {count} {count === 1 ? "person" : "people"}, {formatAmount(r.total)} {TOKEN_SYMBOL} in total.
+                        Pay {count} {count === 1 ? "person" : "people"}, {formatMoney(r.total)} in total.
                       </p>
                       <ul className="mt-4 divide-y divide-border">
                         {r.payeeIds.map((id, i) => (
@@ -366,13 +366,13 @@ export default function RunsPage() {
                             <span className="font-mono text-[12px] text-[var(--sage)]" title="Wallet that will be paid">
                               {wallets.get(id) ? shortAddress(wallets.get(id)!) : "No wallet"}
                             </span>
-                            <span className="tnum font-serif text-[16px]">{formatAmount(r.amounts[i])}</span>
+                            <span className="tnum font-serif text-[16px]">{formatMoney(r.amounts[i])}</span>
                           </li>
                         ))}
                       </ul>
                       {v.policy && (
                         <p className="mt-4 text-[13px] text-[var(--sage)]">
-                          Rules: per person {formatAmount(v.policy.perPayee)}, per run {formatAmount(v.policy.perRun)} {TOKEN_SYMBOL}.
+                          Rules: per person {formatMoney(v.policy.perPayee)}, per run {formatMoney(v.policy.perRun)}.
                         </p>
                       )}
                     </section>
@@ -398,7 +398,7 @@ export default function RunsPage() {
                         <div className="grid gap-1">
                           <SignatureMark name={ownerName.trim() || (v.address ? shortAddress(v.address) : "Signed")} className="text-[56px] text-[var(--forest-900)] dark:text-[var(--gold)]" />
                           <p className="font-mono text-[11px] text-muted-foreground">
-                            Signed and paid{v.address ? ` by ${shortAddress(v.address)}` : ""} · {formatAmount(r.total)} {TOKEN_SYMBOL}
+                            Signed and paid{v.address ? ` by ${shortAddress(v.address)}` : ""} · {formatMoney(r.total)}
                           </p>
                           {paidTx && (
                             <a href={txUrl(paidTx.txHash)} target="_blank" rel="noreferrer" className="w-fit font-mono text-[12px] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
@@ -465,7 +465,7 @@ export default function RunsPage() {
           <DialogHeader>
             <DialogTitle>Review and sign</DialogTitle>
             <DialogDescription>
-              {payRun ? `You are paying ${payRun.payeeIds.length} ${payRun.payeeIds.length === 1 ? "person" : "people"} ${formatAmount(payRun.total)} ${TOKEN_SYMBOL} from your vault. This cannot be undone.` : ""}
+              {payRun ? `You are paying ${payRun.payeeIds.length} ${payRun.payeeIds.length === 1 ? "person" : "people"} ${formatMoney(payRun.total)} from your vault. This cannot be undone.` : ""}
             </DialogDescription>
           </DialogHeader>
           {payRun && (
@@ -474,7 +474,7 @@ export default function RunsPage() {
                 <li key={id} className="flex items-center gap-3 py-2.5">
                   <span className="min-w-0 flex-1 truncate font-serif text-[16px]">{names.get(id) ?? shortHash(id)}</span>
                   <span className="font-mono text-[12px] text-muted-foreground">{wallets.get(id) ? shortAddress(wallets.get(id)!) : "No wallet"}</span>
-                  <span className="tnum font-serif text-[16px]">{formatAmount(payRun.amounts[i])}</span>
+                  <span className="tnum font-serif text-[16px]">{formatMoney(payRun.amounts[i])}</span>
                 </li>
               ))}
             </ul>

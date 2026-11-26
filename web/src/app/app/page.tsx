@@ -13,12 +13,12 @@ import { StatusChip, type ChipKind } from "@/components/status-chip";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { addressUrl, txUrl } from "@/lib/chain";
 import { describeEvent } from "@/lib/describe-event";
-import { formatAmount, formatDuration, shortAddress, shortHash } from "@/lib/format";
+import { formatDuration, formatMoney, shortAddress, shortHash } from "@/lib/format";
 import { useFreshKeys } from "@/lib/use-fresh";
 import { useVaultEvents, type VaultEvent } from "@/lib/use-logs";
 import { useVault } from "@/lib/use-vault";
 import { useTx } from "@/lib/use-tx";
-import { payrollVaultAbi, TOKEN_SYMBOL } from "@/lib/contracts";
+import { payrollVaultAbi } from "@/lib/contracts";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -101,8 +101,8 @@ export default function Overview() {
               {hasAgent ? <AllowanceMeter cap={v.policy.periodCap} remaining={v.remaining ?? 0n} /> : <p className="text-[14px] text-muted-foreground">No assistant set.</p>}
             </div>
             <div className="mt-4">
-              <Row label="Per run">{formatAmount(v.policy.perRun)} {TOKEN_SYMBOL}</Row>
-              <Row label="Per person">{formatAmount(v.policy.perPayee)} {TOKEN_SYMBOL}</Row>
+              <Row label="Per run">{formatMoney(v.policy.perRun)}</Row>
+              <Row label="Per person">{formatMoney(v.policy.perPayee)}</Row>
               <Row label="Period">{formatDuration(Number(v.policy.period))}</Row>
               <Row label="Status">{v.revoked ? "Revoked" : "Active"}</Row>
             </div>
@@ -177,7 +177,7 @@ function RecentActivity({ events, loading }: { events?: readonly VaultEvent[]; l
           <span className="meta text-muted-foreground">Latest run</span>
           {run ? (
             <>
-              <span className="tnum text-[14px]">{formatAmount(run.total)} {TOKEN_SYMBOL}</span>
+              <span className="tnum text-[14px]">{formatMoney(run.total)}</span>
               <StatusChip kind={run.chip.kind}>{run.chip.text}</StatusChip>
             </>
           ) : (

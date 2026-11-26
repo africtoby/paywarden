@@ -1,9 +1,9 @@
 import { BaseError, ContractFunctionRevertedError } from "viem";
-import { formatAmount, formatDuration } from "./format";
+import { formatDuration, formatMoney } from "./format";
 
 type Args = readonly unknown[];
 
-const amt = (v: unknown) => `${formatAmount(v as bigint)} tUSD8`;
+const amt = (v: unknown) => formatMoney(v as bigint);
 
 /** Plain-English sentence for each custom error the contracts can raise. */
 export const MESSAGES: Record<string, (a: Args) => string> = {

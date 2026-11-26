@@ -102,6 +102,7 @@ describe.skipIf(!anvilBin)("agent against a real vault (local anvil)", () => {
     const p = sheet("memo: poisoned\nAda Lovelace, 400, 9000");
     const r = await submitRun(deps(), p);
     expect(r).toMatchObject({ status: "refused", errorName: "PerPayeeCapExceeded" });
+    expect((r as { message: string }).message).toContain("$3,600,000"); // 400 h x 9000, written in dollars
   });
 
   it("poisoned: a payee who has not confirmed is refused by the contract", async () => {

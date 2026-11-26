@@ -8,9 +8,9 @@ import { RevealHeading } from "./reveal-heading";
 export type SlipData = { name: string; role: string; wallet: string; amount: string; tx?: string };
 
 const SLIPS: SlipData[] = [
-  { name: "Ada Okonkwo", role: "Product design", wallet: "0x7a3f91c2d0e4b8a6f1c35e7d9b2a4c6e8f0a91c2", amount: "600.00" },
-  { name: "Kemi Adeyemi", role: "Frontend", wallet: "0x51be7c09a3d2f4e6b8c1a0d3e5f7b9c2d4e604d2", amount: "450.00" },
-  { name: "Juan Reyes", role: "QA", wallet: "0x9c04e1f3a5b7d9c2e4f6a8b0c1d3e5f7a9b2e7f1", amount: "400.00" },
+  { name: "Ada Okonkwo", role: "Product design", wallet: "0x7a3f91c2d0e4b8a6f1c35e7d9b2a4c6e8f0a91c2", amount: "$600" },
+  { name: "Kemi Adeyemi", role: "Frontend", wallet: "0x51be7c09a3d2f4e6b8c1a0d3e5f7b9c2d4e604d2", amount: "$450" },
+  { name: "Juan Reyes", role: "QA", wallet: "0x9c04e1f3a5b7d9c2e4f6a8b0c1d3e5f7a9b2e7f1", amount: "$400" },
 ];
 const TX = "0x4e1c9a07d2…b7a2";
 const SLIP_LABEL = "Payslip · Nov";

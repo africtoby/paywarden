@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ADDRESSES, agentSpendPolicyAbi, erc20Abi, payrollVaultAbi, payrollVaultFactoryAbi, TOKEN_SYMBOL } from "@/lib/contracts";
-import { parseAmount } from "@/lib/format";
+import { formatMoney, parseAmount } from "@/lib/format";
+import { MoneyInput } from "@/components/money-input";
 import { useTx } from "@/lib/use-tx";
 import { useVault } from "@/lib/use-vault";
 import { cn } from "@/lib/utils";
@@ -88,7 +89,7 @@ export function Wizard() {
     if (!amount || amount === 0n || !v.vault) return;
     return run(async () => {
       const ok = await tx("Allow the vault to receive tUSD8", { address: ADDRESSES.tusd8, abi: erc20Abi, functionName: "approve", args: [v.vault!, amount] });
-      if (ok) await tx(`Deposit ${deposit} ${TOKEN_SYMBOL}`, { address: v.vault!, abi: payrollVaultAbi, functionName: "deposit", args: [amount] });
+      if (ok) await tx(`Deposit ${formatMoney(amount)}`, { address: v.vault!, abi: payrollVaultAbi, functionName: "deposit", args: [amount] });
     });
   };
 
@@ -189,8 +190,8 @@ export function Wizard() {
             <p className="text-[14px] text-muted-foreground">
               Move {TOKEN_SYMBOL} from your wallet into the vault. This takes two confirmations: allow, then deposit.
             </p>
-            <Field id="deposit" label={`Amount (${TOKEN_SYMBOL})`}>
-              <Input id="deposit" inputMode="decimal" placeholder="10000" value={deposit} onChange={(e) => setDeposit(e.target.value)} />
+            <Field id="deposit" label="Amount">
+              <MoneyInput id="deposit" placeholder="10000" value={deposit} onChange={(e) => setDeposit(e.target.value)} />
             </Field>
             <Button className="w-fit rounded-full" disabled={busy || !parseAmount(deposit)} onClick={doDeposit}>
               Deposit
@@ -207,14 +208,14 @@ export function Wizard() {
               <Input id="agent" placeholder="0x…" value={agent} onChange={(e) => setAgent(e.target.value.trim())} aria-invalid={!!agent && !agentValid} />
             </Field>
             <div className="grid grid-cols-2 gap-4">
-              <Field id="perRun" label={`Per run (${TOKEN_SYMBOL})`}>
-                <Input id="perRun" inputMode="decimal" value={perRun} onChange={(e) => setPerRun(e.target.value)} />
+              <Field id="perRun" label="Per run">
+                <MoneyInput id="perRun" value={perRun} onChange={(e) => setPerRun(e.target.value)} />
               </Field>
               <Field id="perPayee" label="Per person">
-                <Input id="perPayee" inputMode="decimal" value={perPayee} onChange={(e) => setPerPayee(e.target.value)} />
+                <MoneyInput id="perPayee" value={perPayee} onChange={(e) => setPerPayee(e.target.value)} />
               </Field>
               <Field id="periodCap" label="Per period">
-                <Input id="periodCap" inputMode="decimal" value={periodCap} onChange={(e) => setPeriodCap(e.target.value)} />
+                <MoneyInput id="periodCap" value={periodCap} onChange={(e) => setPeriodCap(e.target.value)} />
               </Field>
               <Field id="days" label="Period (days)">
                 <Input id="days" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} />

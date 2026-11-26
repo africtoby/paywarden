@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { encodeAbiParameters, isAddress, keccak256, toHex } from "viem";
-import { formatAmount, formatDuration, parseAmount } from "./format";
+import { formatAmount, formatDuration, formatMoney, parseAmount } from "./format";
 import { inviteLink, payeeId, randomSalt } from "./payee";
 import { explainRevert, MESSAGES } from "./errors";
 import { ADDRESSES, payrollVaultAbi, agentSpendPolicyAbi } from "./contracts";
@@ -52,6 +52,15 @@ describe("amounts (tUSD8, 6 decimals)", () => {
     expect(parseAmount("1450.5")).toBe(1_450_500_000n);
     expect(formatAmount(1_450_000_000n)).toBe("1,450");
   });
+  it("formats money with a dollar sign", () => {
+    expect(formatMoney(1_450_000_000n)).toBe("$1,450");
+    expect(formatMoney(500_000_000n)).toBe("$500");
+    expect(formatMoney(200_000_000n)).toBe("$200");
+    expect(formatMoney(800_000n)).toBe("$0.80");
+    expect(formatMoney(500_000n)).toBe("$0.50");
+    expect(formatMoney(1_450_500_000n)).toBe("$1,450.50");
+    expect(formatMoney(0n)).toBe("$0");
+  });
   it("rejects bad input", () => {
     expect(parseAmount("")).toBeNull();
     expect(parseAmount("-1")).toBeNull();
@@ -93,7 +102,10 @@ describe("error messages", () => {
     expect(missing).toEqual([]);
   });
   it("explains caps with amounts", () => {
-    expect(explainRevert("PerRunCapExceeded", [5_000_000_000n, 1_000_000_000n])).toContain("5,000 tUSD8");
+    const msg = explainRevert("PerRunCapExceeded", [5_000_000_000n, 1_000_000_000n]);
+    expect(msg).toContain("$5,000");
+    expect(msg).toContain("$1,000");
+    expect(msg).not.toContain("tUSD8");
   });
   it("returns null for unknown errors", () => {
     expect(explainRevert("Nope")).toBeNull();
@@ -127,7 +139,7 @@ describe("run checks (live state)", () => {
 describe("permission sentence", () => {
   it("reads in plain English", () => {
     const s = permissionSentence({ perPayee: 800_000_000n, perRun: 2_000_000_000n, periodCap: 5_000_000_000n, periodDays: 30, expiry: null });
-    expect(s).toContain("up to 800 per person, 2,000 per run and 5,000 a month");
+    expect(s).toContain("up to $800 per person, $2,000 per run and $5,000 a month");
     expect(s).toContain("no end date");
   });
 });
@@ -142,7 +154,7 @@ describe("motion helpers", () => {
     const input = { perPayee: 800_000_000n, perRun: 2_000_000_000n, periodCap: 5_000_000_000n, periodDays: 30, expiry: 1_800_000_000 };
     const parts = permissionParts(input);
     expect(parts.map((p) => p.text).join("")).toBe(permissionSentence(input));
-    expect(parts.filter((p) => p.value).map((p) => p.text).slice(0, 3)).toEqual(["800", "2,000", "5,000"]);
+    expect(parts.filter((p) => p.value).map((p) => p.text).slice(0, 3)).toEqual(["$800", "$2,000", "$5,000"]);
   });
 });
 

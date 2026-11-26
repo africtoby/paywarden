@@ -7,6 +7,13 @@ export function formatAmount(raw: bigint, maxFraction = 2): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: maxFraction });
 }
 
+/** 1450000000n -> "$1,450", 800000n -> "$0.80". Whole amounts drop the decimals; anything else shows cents. */
+export function formatMoney(raw: bigint): string {
+  const n = Math.round(Number(formatUnits(raw, TOKEN_DECIMALS)) * 100) / 100;
+  const digits = Number.isInteger(n) ? 0 : 2;
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
 /** "1450.50" -> 1450500000n. Returns null when the text is not a valid amount. */
 export function parseAmount(text: string): bigint | null {
   const t = text.trim();

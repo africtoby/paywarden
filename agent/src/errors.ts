@@ -1,7 +1,7 @@
 import { BaseError, ContractFunctionRevertedError } from "viem";
+import { money } from "./money.js";
 
 const short = (h: string) => `${h.slice(0, 10)}...`;
-const fmt = (n: unknown) => (Number(n) / 1e6).toFixed(2);
 
 /** Contract revert -> plain English. Also returns the raw error name, for tests and logs. */
 export function explain(err: unknown): { name: string; message: string } {
@@ -14,9 +14,9 @@ export function explain(err: unknown): { name: string; message: string } {
         NotAgent: "This wallet is not the assistant set on the vault.",
         PolicyRevoked: "The owner switched the assistant off.",
         PolicyExpired: "The assistant's permission has expired.",
-        PerRunCapExceeded: `This run is ${fmt(a?.[0])} tUSD8 but the per-run limit is ${fmt(a?.[1])}.`,
-        PerPayeeCapExceeded: `One person's pay (${fmt(a?.[1])}) is over the per-person limit (${fmt(a?.[2])}).`,
-        PeriodCapExceeded: `This run is ${fmt(a?.[0])} but only ${fmt(a?.[1])} is left in this period.`,
+        PerRunCapExceeded: `This run is ${money(a?.[0])} but the per-run limit is ${money(a?.[1])}.`,
+        PerPayeeCapExceeded: `One person's pay (${money(a?.[1])}) is over the per-person limit (${money(a?.[2])}).`,
+        PeriodCapExceeded: `This run is ${money(a?.[0])} but only ${money(a?.[1])} is left in this period.`,
         PayeeNotConfirmed: `Payee ${short(String(a?.[0]))} has not confirmed their wallet yet.`,
         DuplicateRun: "This exact run was already proposed.",
         DuplicatePayee: "A person is listed twice in the run.",

@@ -2,7 +2,7 @@ import { timesheetSchema, type Timesheet } from "./timesheet.js";
 
 /**
  * No-LLM parser. Format, one line per person:
- *   Ada Lovelace, 40, 25.50
+ *   Ada Lovelace, 40, 25.50   (a leading "$" on the rate is fine: $25.50)
  * Optional line: "memo: Week 12"
  */
 export function parseRules(text: string): Timesheet {
@@ -18,7 +18,7 @@ export function parseRules(text: string): Timesheet {
     }
     const parts = line.split(",").map((s) => s.trim());
     if (parts.length !== 3) throw new Error(`Cannot read line "${line}". Use: name, hours, rate`);
-    entries.push({ name: parts[0]!, hours: parts[1]!, rate: parts[2]! });
+    entries.push({ name: parts[0]!, hours: parts[1]!, rate: parts[2]!.replace(/^\$\s*/, "") }); // "$25.50" reads as 25.50
   }
   return timesheetSchema.parse({ memo, entries });
 }

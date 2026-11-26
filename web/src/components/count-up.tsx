@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { animate, useReducedMotion } from "framer-motion";
-import { formatAmount } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { Sweep } from "@/components/sweep";
 
 /** Counts a token amount up (or down) to its new value in about 600ms. First render shows the value as is. */
@@ -29,7 +29,7 @@ export function CountUp({ value, className }: { value: bigint; className?: strin
     return () => controls.stop();
   }, [value, reduce]);
 
-  return <span className={className}>{formatAmount(shown)}</span>;
+  return <span className={className}>{formatMoney(shown)}</span>;
 }
 
 /** Same count-up, plus a gold underline flash when the amount goes up (a deposit). */

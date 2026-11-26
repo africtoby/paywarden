@@ -1,8 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { formatAmount } from "@/lib/format";
-import { TOKEN_SYMBOL } from "@/lib/contracts";
+import { formatMoney } from "@/lib/format";
 
 /** Slim bar showing how much of the assistant's allowance for this period is used. */
 export function AllowanceMeter({ cap, remaining }: { cap: bigint; remaining: bigint }) {
@@ -12,7 +11,7 @@ export function AllowanceMeter({ cap, remaining }: { cap: bigint; remaining: big
     <div>
       <div className="flex items-baseline justify-between gap-3 text-[14px]">
         <span className="tnum">
-          {formatAmount(used)} of {formatAmount(cap)} {TOKEN_SYMBOL}
+          {formatMoney(used)} of {formatMoney(cap)}
         </span>
         <span className="meta text-muted-foreground">{Math.round(pct)}% used</span>
       </div>

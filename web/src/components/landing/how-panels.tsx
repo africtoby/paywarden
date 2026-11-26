@@ -56,7 +56,7 @@ export function HowPanels() {
           <div className="border-b border-[var(--ink)]/20 pb-1">
             <SignatureMark name="Ama Mensah" animate={false} className="text-[44px] text-[var(--forest-900)]" />
           </div>
-          <p className="mt-2 font-mono text-[12px] text-[var(--ink)]/68">Signed · 1,450 tUSD8 paid</p>
+          <p className="mt-2 font-mono text-[12px] text-[var(--ink)]/68">Signed · $1,450 paid</p>
         </div>
       </article>
     </div>

@@ -11,18 +11,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { permissionParts } from "@/lib/assistant-sentence";
-import { agentSpendPolicyAbi, payrollVaultAbi, TOKEN_SYMBOL } from "@/lib/contracts";
+import { agentSpendPolicyAbi, payrollVaultAbi } from "@/lib/contracts";
 import { addressUrl } from "@/lib/chain";
-import { formatAmount, formatDuration, parseAmount, shortAddress } from "@/lib/format";
+import { formatAmount, formatDuration, formatMoney, parseAmount, shortAddress } from "@/lib/format";
+import { MoneyInput } from "@/components/money-input";
 import { useNow } from "@/lib/use-now";
 import { useTx } from "@/lib/use-tx";
 import { useVault } from "@/lib/use-vault";
 
-function Field({ id, label, value, set, mode = "decimal" }: { id: string; label: string; value: string; set: (v: string) => void; mode?: "decimal" | "numeric" | "text" }) {
+function Field({ id, label, value, set, mode = "decimal", money = false }: { id: string; label: string; value: string; set: (v: string) => void; mode?: "decimal" | "numeric" | "text"; money?: boolean }) {
   return (
     <div className="grid gap-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} inputMode={mode} value={value} onChange={(e) => set(e.target.value)} />
+      {money ? <MoneyInput id={id} value={value} onChange={(e) => set(e.target.value)} /> : <Input id={id} inputMode={mode} value={value} onChange={(e) => set(e.target.value)} />}
     </div>
   );
 }
@@ -138,8 +139,8 @@ export default function AssistantPage() {
               <dl className="mt-4 divide-y divide-border text-[14px]">
                 {([
                   ["Assistant", <a key="a" className="font-mono text-[13px] hover:underline" href={addressUrl(p.agent)} target="_blank" rel="noreferrer">{shortAddress(p.agent)}</a>],
-                  ["Per run", `${formatAmount(p.perRun)} ${TOKEN_SYMBOL}`],
-                  ["Per person", `${formatAmount(p.perPayee)} ${TOKEN_SYMBOL}`],
+                  ["Per run", formatMoney(p.perRun)],
+                  ["Per person", formatMoney(p.perPayee)],
                   ["Period", formatDuration(Number(p.period))],
                   ["Expires", p.expiry === 0n ? "Never" : new Date(Number(p.expiry) * 1000).toLocaleDateString()],
                   ["Status", v.revoked ? "Switched off" : expired ? "Expired" : "Active"],
@@ -200,9 +201,9 @@ export default function AssistantPage() {
           <div className="mt-4 grid gap-4">
             <Field id="agent" label="Assistant wallet address" value={agent} set={(x) => setAgent(x.trim())} mode="text" />
             <div className="grid grid-cols-2 gap-4">
-              <Field id="perPayee" label={`Per person (${TOKEN_SYMBOL})`} value={perPayee} set={setPerPayee} />
-              <Field id="perRun" label="Per run" value={perRun} set={setPerRun} />
-              <Field id="periodCap" label="Monthly cap" value={periodCap} set={setPeriodCap} />
+              <Field id="perPayee" label="Per person" value={perPayee} set={setPerPayee} money />
+              <Field id="perRun" label="Per run" value={perRun} set={setPerRun} money />
+              <Field id="periodCap" label="Monthly cap" value={periodCap} set={setPeriodCap} money />
               <Field id="days" label="Period (days)" value={days} set={setDays} mode="numeric" />
             </div>
             <Field id="expiry" label="Lasts (days)" value={expiryDays} set={setExpiryDays} mode="numeric" />

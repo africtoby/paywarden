@@ -5,6 +5,7 @@ import { parseTimesheet } from "../src/run.js";
 import { toUnits, validate, payeeIdOf } from "../src/validate.js";
 import { withRetry } from "../src/submit.js";
 import { isRetryable } from "../src/errors.js";
+import { money } from "../src/money.js";
 
 const salt = `0x${"11".repeat(32)}` as const;
 const payees = [
@@ -30,6 +31,20 @@ describe("parseRules (no-LLM fallback)", () => {
   });
   it("rejects a malformed line", () => {
     expect(() => parseRules("Ada, 40")).toThrow(/Cannot read line/);
+  });
+  it("accepts a leading dollar sign on the rate", () => {
+    const s = parseRules("Ada Lovelace, 40, $25.50\nGrace Hopper, 32.5, $ 30");
+    expect(s.entries.map((e) => e.rate)).toEqual(["25.50", "30"]);
+  });
+});
+
+describe("money", () => {
+  it("shows whole amounts without decimals and others with cents", () => {
+    expect(money(1_450_000_000n)).toBe("$1,450");
+    expect(money(500_000_000n)).toBe("$500");
+    expect(money(800_000n)).toBe("$0.80");
+    expect(money(500_000n)).toBe("$0.50");
+    expect(money(0n)).toBe("$0");
   });
 });
 

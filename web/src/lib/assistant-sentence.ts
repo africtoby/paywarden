@@ -1,4 +1,4 @@
-import { formatAmount } from "./format";
+import { formatMoney } from "./format";
 
 export type SentenceInput = {
   perPayee: bigint;
@@ -17,11 +17,11 @@ export function permissionParts(s: SentenceInput): SentencePart[] {
   const until = s.expiry === null ? "with no end date" : `until ${new Date(s.expiry * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
   return [
     { text: "It can pay up to ", value: false },
-    { text: formatAmount(s.perPayee), value: true },
+    { text: formatMoney(s.perPayee), value: true },
     { text: " per person, ", value: false },
-    { text: formatAmount(s.perRun), value: true },
+    { text: formatMoney(s.perRun), value: true },
     { text: " per run and ", value: false },
-    { text: formatAmount(s.periodCap), value: true },
+    { text: formatMoney(s.periodCap), value: true },
     { text: ` ${days}`, value: true },
     { text: ", ", value: false },
     { text: until, value: true },
@@ -29,7 +29,7 @@ export function permissionParts(s: SentenceInput): SentencePart[] {
   ];
 }
 
-/** "It can pay up to 800 per person, 2,000 per run and 5,000 every 30 days, until 12 Mar 2027." */
+/** "It can pay up to $800 per person, $2,000 per run and $5,000 every 30 days, until 12 Mar 2027." */
 export function permissionSentence(s: SentenceInput): string {
   return permissionParts(s).map((p) => p.text).join("");
 }
