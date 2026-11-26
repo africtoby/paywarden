@@ -1,7 +1,7 @@
 "use client";
 
-import { Children, cloneElement, isValidElement, useLayoutEffect, useRef, useState, type ElementType, type ReactNode } from "react";
-import { motion, useInView, useReducedMotion } from "framer-motion";
+import { Children, cloneElement, isValidElement, useEffect, useLayoutEffect, useRef, useState, type ElementType, type ReactNode } from "react";
+import { useReducedMotion } from "framer-motion";
 
 const LINE_STAGGER = 0.06; // seconds between lines
 
@@ -22,8 +22,31 @@ export function RevealHeading({
 }) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLElement>(null);
-  const seen = useInView(ref, { once: true, amount: 0.4 });
+  const [seen, setSeen] = useState(false);
   const [delays, setDelays] = useState<number[]>([]);
+
+  // Reveal once the heading enters the view. A heading already on screen at load (the hero) is
+  // revealed straight away: the library's in-view hook could miss it and leave the words hidden.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.top < window.innerHeight && r.bottom > 0) {
+      setSeen(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setSeen(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "0px 0px -10% 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   // Group the words into visual lines and give each line its stagger.
   useLayoutEffect(() => {
@@ -58,15 +81,17 @@ export function RevealHeading({
           const i = n++;
           return (
             <span key={k} className="inline-block overflow-hidden pb-[0.14em] -mb-[0.14em] align-bottom">
-              <motion.span
+              {/* A CSS transition, not a motion.span: the motion animation could stall on first load and leave the words hidden. */}
+              <span
                 data-w
                 className="inline-block will-change-transform"
-                initial={{ y: "110%" }}
-                animate={{ y: shown ? "0%" : "110%" }}
-                transition={reduce ? { duration: 0 } : { duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: delays[i] ?? 0 }}
+                style={{
+                  transform: shown ? "translateY(0%)" : "translateY(110%)",
+                  transition: reduce ? "none" : `transform 0.8s cubic-bezier(0.22, 1, 0.36, 1) ${delays[i] ?? 0}s`,
+                }}
               >
                 {part}
-              </motion.span>
+              </span>
             </span>
           );
         });
