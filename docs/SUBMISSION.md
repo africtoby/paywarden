@@ -9,13 +9,16 @@ PayWarden lets a small employer hand the tedious part of payroll to an AI assist
 Payees prove their wallet themselves (confirmation of payee), so nobody is paid at an address they did not vouch for. A wrong wallet can be unlinked by the owner. Every refusal is a named contract error, and the web app explains it in plain English.
 
 ## What is built
-- Contracts (Foundry): vault, factory, spend policy, ERC-8004 style identity registry. 66 tests, 95% line coverage, fuzz and invariant tests on the caps. Verified on the Aevum explorer.
-- Web app: wizard, dashboard, payee invite and confirm, assistant permissions, runs with seven live checks, activity log with explorer links, light and dark themes, responsive.
+- Contracts (Foundry): vault, factory, spend policy, ERC-8004 style identity registry. 69 tests, 95.6% line coverage (100% on every contract source file), fuzz and invariant tests on the caps. Verified on the Aevum explorer.
+- Web app: wizard, dashboard, payee invite and confirm, assistant permissions, runs with seven live checks, a review-and-sign step before paying, activity log with explorer links, amounts shown in dollars, light and dark themes, responsive.
 - Agent: timesheet to JSON (LLM or plain parser), plain-code validation, simulation, retry with backoff, receipt waiting, idempotent proposals. A poisoned timesheet is refused by the contract.
 
 ## Links
 - Repository: https://github.com/africtoby/paywarden
-- Demo video: <add public link>
+- Demo video (2:17): (link coming soon)
+- 30-second cut: (link coming soon)
+- How it works, with a real testnet run: https://github.com/africtoby/paywarden/blob/main/docs/HOW-IT-WORKS.md
+- Paid run on the explorer: https://explorer-test.qday.info/tx/0x5ee35c50dedf2b4aa8e92dbd6b405efde04146e0f280b52df94cb18afce87640
 - Factory: https://explorer-test.qday.info/address/0xC12819acfEA15773cE49c001f6F23842cc4480DA
 - IdentityRegistry: https://explorer-test.qday.info/address/0x65b0B1df79B5A61021feF2BfA489a49A6b646F85
 

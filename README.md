@@ -6,6 +6,10 @@ An assistant reads a timesheet and drafts a pay run in tUSD8. A smart contract o
 
 Built for the Aevum Builder Challenge #1 (QDay, DoraHacks). All settlement happens on the QDay Aevum testnet (chain 44005).
 
+**Demo video (2:17):** (link coming soon)
+
+New to PayWarden? Read [how it works, with a real run on the testnet](docs/HOW-IT-WORKS.md).
+
 ## How it works
 
 1. **Vault.** An employer creates a vault through the factory and deposits tUSD8.
@@ -25,7 +29,7 @@ Every rejection is a custom error and every action emits an event. The web app t
 | `contracts/` | Foundry project: `PayrollVault`, `PayrollVaultFactory`, `AgentSpendPolicy`, `IdentityRegistry` |
 | `web/` | Next.js, wagmi, viem, RainbowKit, Tailwind app for the employer and the payee |
 | `agent/` | Node and TypeScript service that turns a timesheet into a guarded `proposeRun` |
-| `docs/` | Demo script and submission notes |
+| `docs/` | How it works (with a case study), demo script and submission notes |
 
 ## Network and deployed contracts
 
@@ -57,7 +61,7 @@ cp .env.example .env     # fill in test keys, never commit this file
 ```bash
 cd contracts
 forge build
-forge test               # unit, fuzz, invariant and every revert path
+forge test               # 69 tests: unit, fuzz, invariant and every revert path
 forge coverage --report summary
 ```
 
@@ -117,7 +121,6 @@ The integration test needs `anvil` and a built `contracts/out` (`forge build`). 
 - The assistant key can only call `proposeRun`. It cannot approve, pay, withdraw or change limits.
 - Caps are enforced on-chain at proposal time and again at payment time.
 - Payee names and salts stay in the employer's browser; the chain stores only the hash.
-- Confirmation of payee is secret-based: whoever submits the name and salt first is bound. A watcher of pending transactions could copy a payee's confirm. Check the wallet shown next to each payee on the run card before you approve. Binding the invite to a wallet is a possible future change.
 - Confirmation of payee is secret-based: whoever submits the name and salt first is bound. A watcher of pending transactions could copy a payee's confirm. Check the wallet shown next to each payee on the run card before you approve. Binding the invite to a wallet is a possible future change.
 - Test tokens and test wallets only. This code has not been audited.
 
