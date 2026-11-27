@@ -8,9 +8,26 @@ const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], wei
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], weight: ["400", "500"] });
 const script = Mrs_Saint_Delafield({ variable: "--font-script", subsets: ["latin"], weight: "400" });
 
+const description =
+  "An AI assistant drafts your payroll. A contract on QDay Aevum checks it against your limits. Nothing moves until you sign.";
+
 export const metadata: Metadata = {
-  title: "PayWarden",
-  description: "Payroll your AI prepares. Only you can sign.",
+  metadataBase: new URL("https://www.paywarden.me"),
+  title: "PayWarden: payroll your AI prepares. Only you can sign.",
+  description,
+  applicationName: "PayWarden",
+  openGraph: {
+    type: "website",
+    siteName: "PayWarden",
+    url: "/",
+    title: "PayWarden: payroll your AI prepares. Only you can sign.",
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PayWarden: payroll your AI prepares. Only you can sign.",
+    description,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
