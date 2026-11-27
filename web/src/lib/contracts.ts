@@ -1,9 +1,9 @@
 import type { Address } from "viem";
 
-// Deployed on Aevum (chain 44005). See docs/PROGRESS.md.
+// Deployed on Aevum (chain 44005). Addresses and proof transactions are listed in the README.
 export const ADDRESSES = {
   tusd8: "0x456569838f1d43009A91ebA4263147Afd7233483",
-  factory: "0xC12819acfEA15773cE49c001f6F23842cc4480DA",
+  factory: "0x624C478779CCc80299bAa2A22833bab88e18198E",
   identityRegistry: "0x65b0B1df79B5A61021feF2BfA489a49A6b646F85",
 } as const satisfies Record<string, Address>;
 

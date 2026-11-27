@@ -268,7 +268,8 @@ export default function RunsPage() {
         <ul className="mt-6 grid gap-1">
           {runs.map((r) => {
             const chip = CHIP[r.status];
-            const proposed = r.events.find((e) => e.name === "RunProposed");
+            // A cancelled run can be drafted again under the same key: the latest draft counts.
+            const proposed = [...r.events].reverse().find((e) => e.name === "RunProposed");
             const isOpen = open === r.runKey;
             const { checks, refusal } = checkRun({
               amounts: r.amounts,
@@ -285,7 +286,7 @@ export default function RunsPage() {
             const live = r.status === "Proposed" || r.status === "Approved";
             const refused = live && refusal !== null;
             const paidTx = r.events.find((e) => e.name === "RunExecuted");
-            const cancelTx = r.events.find((e) => e.name === "RunCancelled");
+            const cancelTx = r.status === "Cancelled" ? [...r.events].reverse().find((e) => e.name === "RunCancelled") : undefined;
             const count = r.payeeIds.length;
             const celebrating = celebrate === r.runKey;
             const slips = r.payeeIds.map((id, i) => ({

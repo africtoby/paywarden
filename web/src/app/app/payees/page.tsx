@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
-import type { Address, Hex } from "viem";
+import { isAddress, isHex, zeroAddress, type Address, type Hex } from "viem";
 import { ConnectPrompt } from "@/components/connect-prompt";
 import { Seal } from "@/components/seal";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,8 @@ import { useVaultEvents } from "@/lib/use-logs";
 import { useTx } from "@/lib/use-tx";
 import { useVault } from "@/lib/use-vault";
 
-type Invite = { name: string; salt: Hex; id: Hex };
+/** `wallet` is the wallet the invite is bound to, when the owner gave one. */
+type Invite = { name: string; salt: Hex; id: Hex; wallet?: Address };
 
 const storeKey = (vault: string) => `paywarden:invites:${vault.toLowerCase()}`;
 
@@ -38,6 +39,8 @@ export default function PayeesPage() {
   const tx = useTx();
   const events = useVaultEvents(v.vault, v.policyAddress);
   const [name, setName] = useState("");
+  const [walletInput, setWalletInput] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -62,22 +65,59 @@ export default function PayeesPage() {
   const confirmedIds = useMemo(() => [...confirmed.keys()], [confirmed]);
   const fresh = useFreshKeys(confirmedIds, events.isLoading, 2500);
 
-  const invite = async () => {
-    if (!v.vault || !name.trim()) return;
-    const salt = randomSalt();
-    const id = payeeId(name.trim(), salt);
-    setBusy(true);
-    const hash = await tx(`Invite ${name.trim()}`, { address: v.vault, abi: payrollVaultAbi, functionName: "invitePayee", args: [id] });
-    setBusy(false);
-    if (!hash) return;
-    const next = [{ name: name.trim(), salt, id }, ...invites];
+  const save = (next: Invite[], warning: string) => {
     setInvites(next);
     try {
-      localStorage.setItem(storeKey(v.vault), JSON.stringify(next));
+      localStorage.setItem(storeKey(v.vault!), JSON.stringify(next));
     } catch {
-      toast.warning("Copy the invite link now: this browser could not save it.");
+      toast.warning(warning);
     }
+  };
+
+  const walletTrim = walletInput.trim();
+  const walletError = walletTrim !== "" && !isAddress(walletTrim) ? "That is not a wallet address. It starts with 0x and has 42 characters." : null;
+
+  const invite = async () => {
+    if (!v.vault || !name.trim() || walletError) return;
+    const salt = randomSalt();
+    const id = payeeId(name.trim(), salt);
+    const wallet = walletTrim ? (walletTrim as Address) : undefined;
+    setBusy(true);
+    const hash = await tx(`Invite ${name.trim()}`, { address: v.vault, abi: payrollVaultAbi, functionName: "invitePayee", args: [id, wallet ?? zeroAddress] });
+    setBusy(false);
+    if (!hash) return;
+    save([{ name: name.trim(), salt, id, wallet }, ...invites], "Copy the invite link now: this browser could not save it.");
     setName("");
+    setWalletInput("");
+  };
+
+  // Invite links live only in this browser, so let the owner keep a copy and bring it back.
+  const exportInvites = () => {
+    const blob = new Blob([JSON.stringify({ vault: v.vault, invites }, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `paywarden-invites-${v.vault!.slice(0, 8)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const importInvites = async (file: File) => {
+    try {
+      const data = JSON.parse(await file.text()) as { vault?: string; invites?: Invite[] };
+      if (data.vault && data.vault.toLowerCase() !== v.vault!.toLowerCase()) {
+        toast.error("This backup belongs to a different vault.");
+        return;
+      }
+      const valid = (data.invites ?? []).filter(
+        (i) => typeof i.name === "string" && isHex(i.salt, { strict: true }) && i.salt.length === 66 && payeeId(i.name, i.salt) === i.id && (!i.wallet || isAddress(i.wallet)),
+      );
+      const known = new Set(invites.map((i) => i.id));
+      const added = valid.filter((i) => !known.has(i.id));
+      save([...invites, ...added], "This browser could not save the imported invites.");
+      toast.success(added.length ? `Imported ${added.length} invite${added.length === 1 ? "" : "s"}` : "Nothing new in that file");
+    } catch {
+      toast.error("Could not read that file. Choose a PayWarden invites backup (.json).");
+    }
   };
 
   // The old salt is public once a payee has confirmed, so unlinking also retires the invite and issues a new one.
@@ -88,15 +128,10 @@ export default function PayeesPage() {
     if (revoked) {
       const salt = randomSalt();
       const id = payeeId(i.name, salt);
-      const invited = await tx(`New invite for ${i.name}`, { address: v.vault, abi: payrollVaultAbi, functionName: "invitePayee", args: [id] });
+      // The new invite is open to any wallet: the old one was wrong, and the payee confirms with the right one.
+      const invited = await tx(`New invite for ${i.name}`, { address: v.vault, abi: payrollVaultAbi, functionName: "invitePayee", args: [id, zeroAddress] });
       if (invited) {
-        const next = invites.map((x) => (x.id === i.id ? { name: i.name, salt, id } : x));
-        setInvites(next);
-        try {
-          localStorage.setItem(storeKey(v.vault), JSON.stringify(next));
-        } catch {
-          toast.warning("Copy the new invite link now: this browser could not save it.");
-        }
+        save(invites.map((x) => (x.id === i.id ? { name: i.name, salt, id } : x)), "Copy the new invite link now: this browser could not save it.");
       } else {
         toast.error(`${i.name}'s wallet is unlinked, but the new invite was not sent.`, { description: "Add them again from Invite a payee." });
       }
@@ -147,21 +182,53 @@ export default function PayeesPage() {
         <h2 id="inv" className="text-[22px]">
           Invite a payee
         </h2>
-        <div className="mt-4 flex max-w-lg flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="grid flex-1 gap-1.5">
+        <div className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-[1fr_1.4fr_auto] sm:items-end">
+          <div className="grid gap-1.5">
             <Label htmlFor="pname">Full name</Label>
             <Input id="pname" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ada Lovelace" />
           </div>
-          <Button className="rounded-full" disabled={busy || !name.trim()} onClick={invite}>
+          <div className="grid gap-1.5">
+            <Label htmlFor="pwallet">
+              Their wallet <span className="font-normal text-muted-foreground">(recommended)</span>
+            </Label>
+            <Input id="pwallet" value={walletInput} onChange={(e) => setWalletInput(e.target.value)} placeholder="0x…" aria-invalid={!!walletError} aria-describedby="pwallet-help" className="font-mono" spellCheck={false} />
+          </div>
+          <Button className="rounded-full" disabled={busy || !name.trim() || !!walletError} onClick={invite}>
             Send invite
           </Button>
         </div>
+        <p id="pwallet-help" className={`mt-2 max-w-2xl text-[13px] ${walletError ? "text-[var(--refused)]" : "text-muted-foreground"}`}>
+          {walletError ?? "With their wallet, only that wallet can accept the invite, even if someone else sees the link. Leave it empty if you don't know it yet."}
+        </p>
       </section>
 
       <section aria-labelledby="list">
-        <h2 id="list" className="text-[22px]">
-          Your payees
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="list" className="text-[22px]">
+            Your payees
+          </h2>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" className="rounded-full" disabled={invites.length === 0} onClick={exportInvites}>
+              <Download className="size-3.5" aria-hidden /> Back up invites
+            </Button>
+            <Button variant="ghost" size="sm" className="rounded-full" onClick={() => fileRef.current?.click()}>
+              <Upload className="size-3.5" aria-hidden /> Restore
+            </Button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json,.json"
+              className="sr-only"
+              aria-label="Restore invites from a backup file"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void importInvites(f);
+                e.target.value = "";
+              }}
+            />
+          </div>
+        </div>
+        <p className="mt-1 text-[13px] text-muted-foreground">Invite links are kept in this browser only. Back them up so a cleared browser does not lose them.</p>
         {invites.length === 0 ? (
           <p className="mt-3 text-[14px] text-muted-foreground">No one yet. Invite your first payee above.</p>
         ) : (
@@ -195,7 +262,9 @@ export default function PayeesPage() {
                           {shortAddress(wallet)}
                         </a>
                       ) : (
-                        <p className="text-[12px] text-muted-foreground">Not a confirmed payee</p>
+                        <p className="text-[12px] text-muted-foreground">
+                          {i.wallet ? <>Waiting for <span className="font-mono">{shortAddress(i.wallet)}</span> to confirm</> : "Not a confirmed payee"}
+                        </p>
                       )}
                     </div>
                     <StatusChip kind={wallet ? "signed" : "awaiting"}>{wallet ? "Confirmed" : "Invited"}</StatusChip>

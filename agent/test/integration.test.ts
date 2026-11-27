@@ -80,7 +80,7 @@ describe.skipIf(!anvilBin)("agent against a real vault (local anvil)", () => {
     // Ada confirms her wallet; Grace is invited but never confirms.
     const vAbi = artifact("PayrollVault", "PayrollVault").abi;
     for (const p of payees) {
-      await pub.waitForTransactionReceipt({ hash: await owner.writeContract({ address: vault, abi: vAbi, functionName: "invitePayee", args: [payeeIdOf(p.name, p.salt)] }) });
+      await pub.waitForTransactionReceipt({ hash: await owner.writeContract({ address: vault, abi: vAbi, functionName: "invitePayee", args: [payeeIdOf(p.name, p.salt), "0x0000000000000000000000000000000000000000"] }) });
     }
     await pub.waitForTransactionReceipt({ hash: await wallet(keys.ada).writeContract({ address: vault, abi: vAbi, functionName: "confirmPayee", args: ["Ada Lovelace", saltA] }) });
   }, 60_000);

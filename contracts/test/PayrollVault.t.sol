@@ -64,13 +64,13 @@ contract PayrollVaultTest is Base {
     function test_invite_twice_reverts() public {
         vm.prank(employer);
         vm.expectRevert(abi.encodeWithSelector(PayrollVault.AlreadyInvited.selector, aliceId));
-        vault.invitePayee(aliceId);
+        vault.invitePayee(aliceId, address(0));
     }
 
     function test_invite_only_owner() public {
         vm.prank(stranger);
         vm.expectRevert();
-        vault.invitePayee(keccak256("x"));
+        vault.invitePayee(keccak256("x"), address(0));
     }
 
     function test_confirm_wrong_name_or_salt_reverts() public {
@@ -97,6 +97,51 @@ contract PayrollVaultTest is Base {
         vault.confirmPayee("Alice2", keccak256("a2"));
     }
 
+    // ------------------------------------------------- wallet-bound invites
+    function test_wallet_bound_invite_confirms_from_expected_wallet() public {
+        address carol = makeAddr("carol");
+        bytes32 id = vault.commitmentOf("Carol", keccak256("c"));
+        _inviteFor(id, carol);
+        assertEq(vault.expectedWallet(id), carol);
+        vm.prank(carol);
+        vault.confirmPayee("Carol", keccak256("c"));
+        assertEq(vault.payeeWallet(id), carol);
+    }
+
+    function test_wallet_bound_invite_refuses_front_runner() public {
+        address carol = makeAddr("carol");
+        bytes32 id = vault.commitmentOf("Carol", keccak256("c"));
+        _inviteFor(id, carol);
+        // a watcher copies Carol's name and salt from her pending confirm
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(PayrollVault.UnexpectedWallet.selector, carol, stranger));
+        vault.confirmPayee("Carol", keccak256("c"));
+        vm.prank(carol);
+        vault.confirmPayee("Carol", keccak256("c"));
+        assertEq(vault.payeeWallet(id), carol);
+    }
+
+    function testFuzz_wallet_bound_invite_only_expected_wallet(address caller) public {
+        address carol = makeAddr("carol");
+        vm.assume(caller != carol);
+        bytes32 id = vault.commitmentOf("Carol", keccak256("c"));
+        _inviteFor(id, carol);
+        vm.prank(caller);
+        vm.expectRevert(abi.encodeWithSelector(PayrollVault.UnexpectedWallet.selector, carol, caller));
+        vault.confirmPayee("Carol", keccak256("c"));
+    }
+
+    function test_revoke_clears_expected_wallet() public {
+        address carol = makeAddr("carol");
+        bytes32 id = vault.commitmentOf("Carol", keccak256("c"));
+        _inviteFor(id, carol);
+        vm.prank(carol);
+        vault.confirmPayee("Carol", keccak256("c"));
+        vm.prank(employer);
+        vault.revokePayee(id);
+        assertEq(vault.expectedWallet(id), address(0));
+    }
+
     function test_revoke_payee_unlinks_and_closes_invite() public {
         vm.prank(employer);
         vault.revokePayee(aliceId);
@@ -118,7 +163,7 @@ contract PayrollVaultTest is Base {
         vm.startPrank(employer);
         vault.revokePayee(aliceId);
         vm.expectRevert(abi.encodeWithSelector(PayrollVault.AlreadyInvited.selector, aliceId));
-        vault.invitePayee(aliceId);
+        vault.invitePayee(aliceId, address(0));
         vm.stopPrank();
     }
 
@@ -197,7 +242,7 @@ contract PayrollVaultTest is Base {
         (PayrollVault v,) = f.createVault(0);
         bytes32 id = v.commitmentOf("Zed", bytes32(uint256(1)));
         vm.prank(employer);
-        v.invitePayee(id);
+        v.invitePayee(id, address(0));
         vm.prank(stranger);
         v.confirmPayee("Zed", bytes32(uint256(1)));
         assertEq(v.payeeIdentityId(id), 0);
@@ -293,9 +338,7 @@ contract PayrollVaultTest is Base {
         // poisoned timesheet: one payee over perPayee
         vm.prank(agent);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                AgentSpendPolicy.PerPayeeCapExceeded.selector, aliceId, 1_000_000 * USD, 3_000 * USD
-            )
+            abi.encodeWithSelector(AgentSpendPolicy.PerPayeeCapExceeded.selector, aliceId, 1_000_000 * USD, 3_000 * USD)
         );
         vault.proposeRun(_one(aliceId), _oneAmt(1_000_000 * USD), MEMO);
         // total over perRun
@@ -350,9 +393,7 @@ contract PayrollVaultTest is Base {
         vm.warp(block.timestamp + WINDOW);
         vm.startPrank(employer);
         vault.executeRun(key);
-        vm.expectRevert(
-            abi.encodeWithSelector(PayrollVault.RunNotApproved.selector, key, PayrollVault.Status.Executed)
-        );
+        vm.expectRevert(abi.encodeWithSelector(PayrollVault.RunNotApproved.selector, key, PayrollVault.Status.Executed));
         vault.executeRun(key);
         vm.stopPrank();
     }
@@ -422,7 +463,7 @@ contract PayrollVaultTest is Base {
         vm.stopPrank();
     }
 
-    function test_cancelled_run_cannot_be_approved_or_reproposed() public {
+    function test_cancelled_run_cannot_be_approved() public {
         bytes32 key = _propose(1 * USD, 1 * USD);
         vm.startPrank(employer);
         vault.cancelRun(key);
@@ -431,6 +472,34 @@ contract PayrollVaultTest is Base {
         );
         vault.approveRun(key);
         vm.stopPrank();
+    }
+
+    function test_cancelled_run_can_be_proposed_again_with_a_fresh_review_window() public {
+        bytes32 key = _propose(1 * USD, 1 * USD);
+        vm.prank(employer);
+        vault.cancelRun(key);
+        vm.warp(block.timestamp + 1 days);
+        vm.prank(agent);
+        bytes32 again = vault.proposeRun(_ids(aliceId, bobId), _amts(1 * USD, 1 * USD), MEMO);
+        assertEq(again, key);
+        assertEq(uint8(vault.runStatus(key)), uint8(PayrollVault.Status.Proposed));
+        assertEq(vault.getRun(key).executableAt, uint64(block.timestamp) + vault.reviewWindow());
+        // and it still has to be approved and wait out the window before paying
+        vm.prank(employer);
+        vault.approveRun(key);
+        uint64 executableAt = vault.getRun(key).executableAt;
+        vm.prank(employer);
+        vm.expectRevert(abi.encodeWithSelector(PayrollVault.ReviewWindowOpen.selector, executableAt));
+        vault.executeRun(key);
+    }
+
+    function test_paid_run_cannot_be_proposed_again() public {
+        bytes32 key = _propose(1 * USD, 1 * USD);
+        vm.prank(employer);
+        vault.approveRun(key);
+        vm.warp(block.timestamp + vault.reviewWindow());
+        vm.prank(employer);
+        vault.executeRun(key);
         vm.prank(agent);
         vm.expectRevert(abi.encodeWithSelector(PayrollVault.DuplicateRun.selector, key));
         vault.proposeRun(_ids(aliceId, bobId), _amts(1 * USD, 1 * USD), MEMO);

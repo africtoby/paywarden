@@ -19,6 +19,7 @@ export const MESSAGES: Record<string, (a: Args) => string> = {
   NotInvited: () => "This invite does not exist. Check the link, or ask the employer to send a new one.",
   AlreadyConfirmed: () => "This payee has already confirmed.",
   WalletAlreadyBound: () => "This wallet is already linked to another payee. Use a different wallet.",
+  UnexpectedWallet: (a) => `This invite is for a different wallet (${String(a[0]).slice(0, 6)}…${String(a[0]).slice(-4)}). Connect that wallet to confirm.`,
   DuplicateRun: () => "This exact run was already drafted, so it will not be paid twice.",
   UnknownRun: () => "That run does not exist.",
   RunNotProposed: () => "This run is no longer waiting for approval.",

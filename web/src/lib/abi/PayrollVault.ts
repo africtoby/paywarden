@@ -140,6 +140,25 @@ export const payrollVaultAbi = [
   },
   {
     "type": "function",
+    "name": "expectedWallet",
+    "inputs": [
+      {
+        "name": "payeeId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getRun",
     "inputs": [
       {
@@ -202,6 +221,11 @@ export const payrollVaultAbi = [
         "name": "payeeId",
         "type": "bytes32",
         "internalType": "bytes32"
+      },
+      {
+        "name": "wallet",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -1034,6 +1058,22 @@ export const payrollVaultAbi = [
         "name": "count",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UnexpectedWallet",
+    "inputs": [
+      {
+        "name": "expected",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "caller",
+        "type": "address",
+        "internalType": "address"
       }
     ]
   },

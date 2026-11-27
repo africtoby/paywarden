@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { WalletButton } from "@/components/wallet-button";
-import { isAddress, isHex, type Address, type Hex } from "viem";
+import { isAddress, isHex, zeroAddress, type Address, type Hex } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { Seal } from "@/components/seal";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { payrollVaultAbi } from "@/lib/contracts";
 import { addressUrl, txUrl } from "@/lib/chain";
 import { shortAddress, shortHash } from "@/lib/format";
+import { payeeId } from "@/lib/payee";
 import { useTx } from "@/lib/use-tx";
 
 type Invite = { vault: Address; name: string; salt: Hex };
@@ -33,6 +34,16 @@ export default function ConfirmPage() {
 
   const owner = useReadContract({ address: invite?.vault, abi: payrollVaultAbi, functionName: "owner", query: { enabled: !!invite } });
   const isOwner = !!address && !!owner.data && owner.data.toLowerCase() === address.toLowerCase();
+  // When the employer bound the invite to a wallet, only that wallet can confirm it.
+  const expected = useReadContract({
+    address: invite?.vault,
+    abi: payrollVaultAbi,
+    functionName: "expectedWallet",
+    args: invite ? [payeeId(invite.name, invite.salt)] : undefined,
+    query: { enabled: !!invite },
+  });
+  const boundTo = expected.data && expected.data !== zeroAddress ? expected.data : null;
+  const wrongWallet = !!boundTo && !!address && boundTo.toLowerCase() !== address.toLowerCase();
 
   const confirm = async () => {
     if (!invite) return;
@@ -93,6 +104,16 @@ export default function ConfirmPage() {
                 {isConnected && address && (
                   <p className="font-mono text-[12px] text-muted-foreground">Connected as {shortAddress(address)}</p>
                 )}
+                {boundTo && (
+                  <p className="max-w-sm text-[14px] text-muted-foreground">
+                    This invite can only be accepted by wallet <span className="font-mono">{shortAddress(boundTo)}</span>.
+                  </p>
+                )}
+                {wrongWallet && !isOwner && (
+                  <p role="alert" className="max-w-sm rounded-xl border border-[var(--refused)] px-4 py-3 text-[14px] text-[var(--refused)]">
+                    You are connected with a different wallet. Switch to {shortAddress(boundTo!)} to confirm.
+                  </p>
+                )}
                 {isOwner && (
                   <p role="alert" className="max-w-sm rounded-xl border border-[var(--refused)] px-4 py-3 text-[14px] text-[var(--refused)]">
                     This wallet owns the vault. Switch to the payee&apos;s own wallet before confirming, or you would be paying yourself.
@@ -100,7 +121,7 @@ export default function ConfirmPage() {
                 )}
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   {isConnected ? (
-                    <Button className="rounded-full" disabled={busy || isOwner} onClick={confirm}>
+                    <Button className="rounded-full" disabled={busy || isOwner || wrongWallet} onClick={confirm}>
                       Confirm with this wallet
                     </Button>
                   ) : (

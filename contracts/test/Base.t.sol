@@ -81,7 +81,12 @@ abstract contract Base is Test {
 
     function _invite(bytes32 id) internal {
         vm.prank(employer);
-        vault.invitePayee(id);
+        vault.invitePayee(id, address(0));
+    }
+
+    function _inviteFor(bytes32 id, address wallet) internal {
+        vm.prank(employer);
+        vault.invitePayee(id, wallet);
     }
 
     function _ids(bytes32 a, bytes32 b) internal pure returns (bytes32[] memory ids) {

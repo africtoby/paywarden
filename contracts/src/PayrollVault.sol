@@ -48,6 +48,8 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
     mapping(bytes32 payeeId => bool) public invited;
     mapping(bytes32 payeeId => bool) public revokedInvite;
     mapping(bytes32 payeeId => address) public payeeWallet;
+    /// @notice Wallet the owner expects to confirm an invite; address(0) means any wallet that knows the secret.
+    mapping(bytes32 payeeId => address) public expectedWallet;
     mapping(address wallet => bytes32) public walletPayee;
     mapping(bytes32 payeeId => uint256) public payeeIdentityId;
     mapping(bytes32 runKey => Run) private _runs;
@@ -64,6 +66,7 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
     error NotInvited(bytes32 payeeId);
     error AlreadyConfirmed(bytes32 payeeId);
     error WalletAlreadyBound(address wallet);
+    error UnexpectedWallet(address expected, address caller);
     error DuplicateRun(bytes32 runKey);
     error UnknownRun(bytes32 runKey);
     error RunNotProposed(bytes32 runKey, Status status);
@@ -94,7 +97,9 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
         IIdentityRegistry registry_,
         uint64 reviewWindow_
     ) Ownable(owner_) {
-        if (address(token_) == address(0) || address(policy_) == address(0)) revert ZeroAddress();
+        if (address(token_) == address(0) || address(policy_) == address(0)) {
+            revert ZeroAddress();
+        }
         token = token_;
         policy = policy_;
         registry = registry_;
@@ -136,9 +141,12 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
         return keccak256(abi.encode(name, salt));
     }
 
-    function invitePayee(bytes32 payeeId) external onlyOwner {
+    /// @notice Opens an invite. Pass the payee's wallet as `wallet` so only that wallet can confirm it:
+    /// confirmations wait in the public mempool, so with address(0) anyone who sees the secret could confirm first.
+    function invitePayee(bytes32 payeeId, address wallet) external onlyOwner {
         if (invited[payeeId] || revokedInvite[payeeId]) revert AlreadyInvited(payeeId);
         invited[payeeId] = true;
+        expectedWallet[payeeId] = wallet;
         emit PayeeInvited(payeeId);
     }
 
@@ -147,6 +155,8 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
         bytes32 payeeId = commitmentOf(name, salt);
         if (!invited[payeeId]) revert NotInvited(payeeId);
         if (payeeWallet[payeeId] != address(0)) revert AlreadyConfirmed(payeeId);
+        address expected = expectedWallet[payeeId];
+        if (expected != address(0) && expected != msg.sender) revert UnexpectedWallet(expected, msg.sender);
         if (walletPayee[msg.sender] != bytes32(0)) revert WalletAlreadyBound(msg.sender);
         payeeWallet[payeeId] = msg.sender;
         walletPayee[msg.sender] = payeeId;
@@ -164,6 +174,7 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
         delete walletPayee[wallet];
         invited[payeeId] = false;
         revokedInvite[payeeId] = true;
+        delete expectedWallet[payeeId];
         emit PayeeRevoked(payeeId, wallet);
     }
 
@@ -184,6 +195,7 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
     // ----------------------------------------------------------- run flow
 
     /// @notice Agent-only. Creates a pending run; runKey is derived from the content, so a retry reverts.
+    /// A cancelled run can be proposed again (same content, same key); a pending or paid one cannot.
     function proposeRun(bytes32[] calldata payeeIds, uint256[] calldata amounts, bytes32 memoHash)
         external
         whenNotPaused
@@ -208,7 +220,7 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
 
         runKey = keccak256(abi.encode(payeeIds, amounts, memoHash));
         Run storage r = _runs[runKey];
-        if (r.status != Status.None) revert DuplicateRun(runKey);
+        if (r.status != Status.None && r.status != Status.Cancelled) revert DuplicateRun(runKey);
 
         r.payeeIds = payeeIds;
         r.amounts = amounts;
