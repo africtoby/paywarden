@@ -13,9 +13,30 @@ const description =
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.paywarden.me"),
-  title: "PayWarden: payroll your AI prepares. Only you can sign.",
+  title: { default: "PayWarden: payroll your AI prepares. Only you can sign.", template: "%s | PayWarden" },
   description,
   applicationName: "PayWarden",
+  keywords: [
+    "PayWarden",
+    "AI payroll",
+    "stablecoin payroll",
+    "crypto payroll",
+    "agentic payments",
+    "AI agent spending limits",
+    "on-chain payroll",
+    "smart contract payroll",
+    "QDay",
+    "Aevum",
+    "tUSD8",
+    "ERC-8004",
+  ],
+  authors: [{ name: "Toby", url: "https://github.com/africtoby" }],
+  creator: "Toby",
+  category: "finance",
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large" } },
+  // Set NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION in Vercel to verify the site in Google Search Console.
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } : undefined,
   openGraph: {
     type: "website",
     siteName: "PayWarden",

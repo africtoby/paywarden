@@ -30,14 +30,14 @@ An assistant reads a timesheet and drafts a pay run in tUSD8. A smart contract o
 ---
 
 > [!TIP]
-> **For judges, the 5-minute path:**
-> 1. ▶ Watch the [2-minute demo](https://youtu.be/EGevjYKSC4A).
-> 2. 🌐 Try it at [paywarden.me](https://paywarden.me) (Aevum testnet; free test tokens from the [QDay faucet](https://faucet.qday.info/en)).
-> 3. 📜 See every address and the commit it was built from in [Deployments](#-deployments).
-> 4. ✅ Click through 15 real transactions, including 3 refusals, in [On-chain proof](#-on-chain-proof).
-> 5. 🏷️ The submitted code is tagged [`submission-v1`](https://github.com/africtoby/paywarden/tree/submission-v1).
+> **The 5-minute tour**
+> 1. Watch the [2-minute demo](https://youtu.be/EGevjYKSC4A).
+> 2. Try it at [paywarden.me](https://paywarden.me) (Aevum testnet; free test tokens from the [QDay faucet](https://faucet.qday.info/en)).
+> 3. See every address and the commit it was built from in [Deployments](#deployments).
+> 4. Click through 15 real transactions, including 3 refusals, in [On-chain proof](#on-chain-proof).
+> 5. The code as submitted is tagged [`submission-v1`](https://github.com/africtoby/paywarden/tree/submission-v1).
 
-## 🎬 Watch it
+## Watch it
 
 https://github.com/user-attachments/assets/7ecce811-b1b1-4901-b68a-cffea238a4d8
 
@@ -54,13 +54,13 @@ https://github.com/user-attachments/assets/7ecce811-b1b1-4901-b68a-cffea238a4d8
   </tr>
 </table>
 
-## 💡 The problem
+## The problem
 
 Payroll is repetitive, which makes it a good job for an AI assistant. But giving an assistant the payroll usually means giving it the money. One poisoned timesheet, one prompt injection or one wrong wallet address, and the money is gone for good.
 
 PayWarden splits the job. The assistant reads and drafts. A contract holds the money and enforces your limits. Only you can sign.
 
-## 🧭 Walkthrough
+## Walkthrough
 
 <table>
   <tr>
@@ -95,7 +95,7 @@ PayWarden splits the job. The assistant reads and drafts. A contract holds the m
 
 <sub>Screenshots are from the recorded demo on the previous deployment (factory `0xC128…80DA`), where amounts still read tUSD8. The app now shows dollars and asks for the payee's wallet when inviting.</sub>
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -132,7 +132,7 @@ sequenceDiagram
     V->>Y: tUSD8 transfer
 ```
 
-## ⚙️ How it works
+## How it works
 
 1. **Vault.** An employer creates a vault through the factory and deposits tUSD8.
 2. **Confirmation of payee.** The employer invites a payee by a hash of their name and a secret salt, and gives the payee's wallet address. The payee opens the invite link and confirms from that wallet. Any other wallet is refused with `UnexpectedWallet`, even one that copied the secret from a pending transaction. The confirmed wallet is registered in an ERC-8004 style identity registry. The owner can unlink a wrong wallet with `revokePayee`, which also retires that invite.
@@ -144,7 +144,7 @@ sequenceDiagram
 
 Every rejection is a custom error and every action emits an event. The web app turns both into plain English and links each event to the explorer.
 
-## 🌐 How it uses the QDay platform
+## How it uses the QDay platform
 
 | Piece | How PayWarden uses it |
 | --- | --- |
@@ -155,7 +155,7 @@ Every rejection is a custom error and every action emits an event. The web app t
 | **Spending limits and scoped keys** | `AgentSpendPolicy` works like a scoped session key: one key, hard per-run, per-person and per-period caps, an expiry, and instant revoke. It's enforced on-chain at proposal and again at payment. Native ERC-4337 session keys are on the [roadmap](docs/ROADMAP.md). |
 | **EVM version** | Aevum doesn't run `MCOPY` (Cancun), so the contracts are compiled for Shanghai (`evm_version = "shanghai"`, OpenZeppelin 5.1). |
 
-## 📜 Deployments
+## Deployments
 
 Every deployment and the exact commit it was built from. Vaults and spend policies are created by the factory, so they come from the factory's commit.
 
@@ -172,7 +172,7 @@ Every deployment and the exact commit it was built from. Vaults and spend polici
 - RPC: https://rpc-test.qday.info
 - Explorer: https://explorer-test.qday.info
 
-## ✅ On-chain proof
+## On-chain proof
 
 A full payday on the current contracts, 27 Nov 2026. The assistant's limits: $3 per run, $0.80 per person, $10 per 7 days, valid 90 days. Click any hash to open it on the explorer.
 
@@ -198,7 +198,7 @@ The refused rows were sent on purpose, with a fixed gas limit, so the refusal is
 
 The demo video was recorded on the previous deployment (factory `0xC128…80DA`). That payday is also on the explorer: [pay transaction](https://explorer-test.qday.info/tx/0x5ee35c50dedf2b4aa8e92dbd6b405efde04146e0f280b52df94cb18afce87640).
 
-## 🚀 Run it yourself
+## Run it yourself
 
 You need Node 20 or newer, Git, and [Foundry](https://book.getfoundry.sh/getting-started/installation). Use test wallets only.
 
@@ -292,7 +292,7 @@ npm test                 # includes a local-chain test that deploys the real con
 
 The integration test needs `anvil` and a built `contracts/out` (`forge build`). It is skipped if `anvil` is missing.
 
-## 🔌 API examples
+## API examples
 
 <details>
 <summary><b>Contract calls with <code>cast</code></b> (click to open)</summary>
@@ -328,7 +328,7 @@ The run key is `keccak256(abi.encode(payeeIds, amounts, memoHash))`, which is al
 
 </details>
 
-## 🛡️ Safety notes
+## Safety notes
 
 - The assistant key can only call `proposeRun`. It cannot approve, pay, withdraw or change limits.
 - Caps are enforced on-chain at proposal time and again at payment time.
@@ -336,18 +336,18 @@ The run key is `keccak256(abi.encode(payeeIds, amounts, memoHash))`, which is al
 - Every invite made in the app is bound to the payee's wallet, so only that wallet can confirm it, even if someone copies the link or sees the secret in a pending transaction (proven on-chain: `UnexpectedWallet`). The contract also accepts an open invite (`address(0)`) for direct integrations; the app never sends one.
 - Test tokens and test wallets only. This code has not been audited.
 
-## ⚠️ Known constraints
+## Known constraints
 
 - If one transfer in a run fails, the whole run reverts and nobody in it is paid. That's safe (no partial payroll), but one bad payee blocks the run until it's fixed.
 - The same payees, amounts and memo give the same run key, so a paid run can't be drafted twice. Put the period in the memo (for example `memo: Week 48`).
 - Invite links live in the employer's browser. Use Back up invites on the Payees page.
 - No ERC-4337 smart accounts or paymaster yet. See the [roadmap](docs/ROADMAP.md).
 
-## 🗺️ Roadmap
+## Roadmap
 
 Who it's for, the business model and the path to mainnet: [docs/ROADMAP.md](docs/ROADMAP.md).
 
-## 📂 Repository layout
+## Repository layout
 
 | Folder | What it is |
 | --- | --- |
@@ -356,6 +356,6 @@ Who it's for, the business model and the path to mainnet: [docs/ROADMAP.md](docs
 | `agent/` | Node and TypeScript service that turns a timesheet into a guarded `proposeRun` |
 | `docs/` | How it works, roadmap, demo script and submission notes |
 
-## 📄 Licence
+## Licence
 
 MIT. See [LICENSE](LICENSE). Third-party notices are in [NOTICE](NOTICE).

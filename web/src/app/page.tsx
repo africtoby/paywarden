@@ -14,12 +14,28 @@ const GITHUB = "https://github.com/africtoby/paywarden";
 const DORAHACKS = "https://dorahacks.io/hackathon/qday/detail";
 const EXPLORER = "https://explorer-test.qday.info";
 
+// Structured data so search engines know what the site is.
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "PayWarden",
+  url: "https://www.paywarden.me",
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Web",
+  description:
+    "Payroll an AI assistant prepares and only you can sign. The assistant drafts pay runs in stablecoins, a smart contract on QDay Aevum checks them against your limits, and nothing moves until you approve.",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  author: { "@type": "Person", name: "Toby", url: "https://github.com/africtoby" },
+  sameAs: ["https://github.com/africtoby/paywarden", "https://youtu.be/EGevjYKSC4A"],
+};
+
 const goldCta =
   "relative h-12 overflow-hidden rounded-full bg-[var(--gold)] px-7 text-[16px] text-[var(--forest-950)] before:absolute before:inset-0 before:-translate-x-full before:bg-[var(--gold-soft)] before:transition-transform before:duration-500 before:ease-out hover:bg-[var(--gold)] hover:before:translate-x-0 [&>span]:relative";
 
 export default function Landing() {
   return (
     <div className="bg-[var(--paper)] text-[var(--ink)]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       <noscript>
         <style>{"[data-w]{transform:none!important}"}</style>
       </noscript>
