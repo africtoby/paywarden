@@ -25,6 +25,13 @@ Payees prove their wallet themselves (confirmation of payee), and invites can be
 - Factory: https://explorer-test.qday.info/address/0x624C478779CCc80299bAa2A22833bab88e18198E
 - IdentityRegistry: https://explorer-test.qday.info/address/0x65b0B1df79B5A61021feF2BfA489a49A6b646F85
 
+## Deployments and the commits they came from
+- PayrollVaultFactory 0x624C478779CCc80299bAa2A22833bab88e18198E: commit feb30d4 (https://github.com/africtoby/paywarden/commit/feb30d4), deploy tx 0xf24a4ac3ace4af062c13fbdb2f90d8bbfd05105f72d973e9e2d8f6e6c5ed7101
+- IdentityRegistry 0x65b0B1df79B5A61021feF2BfA489a49A6b646F85: commit 652ecba (https://github.com/africtoby/paywarden/commit/652ecba), deploy tx 0xac68426f651d768b8a86deb395558199f394e603343c10f8ac21d55ac8ab1b22
+- Demo vault 0x171290CcBA179A9B8f89ff408134F09F33Da3C76 and policy 0x6dA8BE510De086f61D9819906203b15AE433fE40: created by the factory above (commit feb30d4)
+- Previous factory shown in the video 0xC12819acfEA15773cE49c001f6F23842cc4480DA: commit 078af3d, deploy tx 0xb9679ee7101ceb1095c2a15bb67ffd1a9ec00dfb4eae00c812160ffd1cb5cead
+- Web app https://paywarden.me: branch main, auto-deployed by Vercel on every push
+
 ## Known limits
 - Test tokens and test wallets only; not audited.
 - Payee names and salts are kept in the employer's browser; clearing it loses the invite links, not the on-chain confirmations.

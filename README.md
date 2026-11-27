@@ -1,26 +1,91 @@
-# PayWarden
+<div align="center">
+
+<img src="docs/images/banner.png" alt="PayWarden: AI drafts payroll. Only you sign." width="100%">
+
+<br>
 
 [![CI](https://github.com/africtoby/paywarden/actions/workflows/ci.yml/badge.svg)](https://github.com/africtoby/paywarden/actions/workflows/ci.yml)
+[![Live app](https://img.shields.io/badge/live-paywarden.me-CDB97E?style=flat&labelColor=0E3B2B)](https://paywarden.me)
+[![Demo video](https://img.shields.io/badge/demo-watch_on_YouTube-FF0000?style=flat&logo=youtube&logoColor=white)](https://youtu.be/EGevjYKSC4A)
+[![Aevum testnet](https://img.shields.io/badge/QDay_Aevum-chain_44005-1F6B47?style=flat)](https://explorer-test.qday.info)
+[![License: MIT](https://img.shields.io/badge/license-MIT-8DA597?style=flat)](LICENSE)
 
-Payroll an AI assistant prepares and only you can sign.
+![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?style=flat&logo=solidity&logoColor=white)
+![Foundry](https://img.shields.io/badge/Foundry-75_tests-E35F23?style=flat)
+![Coverage](https://img.shields.io/badge/coverage-95.7%25-1F6B47?style=flat)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat&logo=nextdotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-agent_+_web-3178C6?style=flat&logo=typescript&logoColor=white)
+![viem](https://img.shields.io/badge/wagmi_+_viem-RainbowKit-7B3FE4?style=flat)
 
-An assistant reads a timesheet and drafts a pay run in tUSD8. A smart contract on QDay Aevum checks the draft against limits you set. Nothing moves until you approve and sign. The assistant can propose a run and nothing else.
+**Payroll an AI assistant prepares and only you can sign.**
 
-Built for the Aevum Builder Challenge #1 (QDay, DoraHacks). All settlement happens on the QDay Aevum testnet (chain 44005).
+An assistant reads a timesheet and drafts a pay run in tUSD8. A smart contract on QDay Aevum checks it against limits you set.<br>Nothing moves until you approve and sign. The assistant can propose a run and nothing else.
 
-- **Demo video (2:17):** https://youtu.be/EGevjYKSC4A
-- **30-second cut:** https://youtube.com/shorts/bFmywFdl-NU
-- **Live app:** https://paywarden.me (Aevum testnet; connect a wallet on chain 44005)
-- **How it works, with a real testnet run:** [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md)
-- **Who it's for, business model and roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
+[**Live app**](https://paywarden.me) · [**Demo video**](https://youtu.be/EGevjYKSC4A) · [**30-second cut**](https://youtube.com/shorts/bFmywFdl-NU) · [**How it works**](docs/HOW-IT-WORKS.md) · [**Roadmap**](docs/ROADMAP.md)
 
-## The problem
+<sub>Built for the Aevum Builder Challenge #1 (QDay × DoraHacks). All settlement happens on the QDay Aevum testnet.</sub>
+
+</div>
+
+---
+
+## 🎬 Watch it
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <a href="https://youtu.be/EGevjYKSC4A"><img src="docs/images/demo-preview.gif" alt="PayWarden demo preview: a poisoned timesheet refused by the contract" width="100%"></a>
+      <br><b>Full demo (2:17)</b><br><sub>Setup, a poisoned timesheet refused on-chain, sign and pay, switch-off</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="https://youtube.com/shorts/bFmywFdl-NU"><img src="docs/images/short-preview.gif" alt="PayWarden 30-second cut preview" width="100%"></a>
+      <br><b>30-second cut</b><br><sub>The idea in half a minute</sub>
+    </td>
+  </tr>
+</table>
+
+## 💡 The problem
 
 Payroll is repetitive, which makes it a good job for an AI assistant. But giving an assistant the payroll usually means giving it the money. One poisoned timesheet, one prompt injection or one wrong wallet address, and the money is gone for good.
 
 PayWarden splits the job. The assistant reads and drafts. A contract holds the money and enforces your limits. Only you can sign.
 
-## Architecture
+## 🧭 Walkthrough
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/01-landing.jpg" alt="Landing page" width="100%"><br><b>Landing page</b><br><sub>The promise and a live demo of a run being checked.</sub></td>
+    <td width="50%" valign="top"><img src="docs/images/02-create-vault.jpg" alt="1 · Create a vault" width="100%"><br><b>1 · Create a vault</b><br><sub>Pick a review window. The factory deploys your vault and spend policy.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/03-limits.jpg" alt="2 · Set the assistant's limits" width="100%"><br><b>2 · Set the assistant's limits</b><br><sub>Per run, per person, per period and an expiry, enforced on-chain.</sub></td>
+    <td width="50%" valign="top"><img src="docs/images/04-vault-open.jpg" alt="3 · Vault funded" width="100%"><br><b>3 · Vault funded</b><br><sub>Balance, the assistant's allowance and your controls in one place.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/05-invite.jpg" alt="4 · Invite a payee" width="100%"><br><b>4 · Invite a payee</b><br><sub>By name, with their wallet, so only they can accept the invite.</sub></td>
+    <td width="50%" valign="top"><img src="docs/images/06-confirmed.jpg" alt="5 · Payee confirms" width="100%"><br><b>5 · Payee confirms</b><br><sub>Ada confirms from her own wallet. Her pay can only go there.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/07-drafts.jpg" alt="6 · The assistant drafts" width="100%"><br><b>6 · The assistant drafts</b><br><sub>The agent reads the timesheet and proposes a $0.50 run.</sub></td>
+    <td width="50%" valign="top"><img src="docs/images/08-checks.jpg" alt="7 · Seven checks pass" width="100%"><br><b>7 · Seven checks pass</b><br><sub>The run card shows every rule the contract enforces.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/09-refused.jpg" alt="8 · A poisoned timesheet is refused" width="100%"><br><b>8 · A poisoned timesheet is refused</b><br><sub>$1 against a $0.80 limit: the contract says no.</sub></td>
+    <td width="50%" valign="top"><img src="docs/images/10-review-sign.jpg" alt="9 · Review and sign" width="100%"><br><b>9 · Review and sign</b><br><sub>See who gets what, type your name, sign in your wallet.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/11-paid.jpg" alt="10 · Paid, once" width="100%"><br><b>10 · Paid, once</b><br><sub>Drafted → Signed → Paid, with your signature on the run.</sub></td>
+    <td width="50%" valign="top"><img src="docs/images/12-explorer.jpg" alt="11 · Verifiable on the explorer" width="100%"><br><b>11 · Verifiable on the explorer</b><br><sub>One transaction, Success, $0.50 to Ada's wallet.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/13-activity.jpg" alt="12 · Every action on the record" width="100%"><br><b>12 · Every action on the record</b><br><sub>The activity log reads straight from on-chain events.</sub></td>
+    <td width="50%" valign="top"><img src="docs/images/14-switched-off.jpg" alt="13 · Switch the assistant off" width="100%"><br><b>13 · Switch the assistant off</b><br><sub>One click, and any further draft is refused.</sub></td>
+  </tr>
+</table>
+
+<sub>Screenshots are from the recorded demo on the previous deployment (factory `0xC128…80DA`), where amounts still read tUSD8. The app now shows dollars and asks for the payee's wallet when inviting.</sub>
+
+## 🏗️ Architecture
 
 ```mermaid
 flowchart LR
@@ -57,7 +122,7 @@ sequenceDiagram
     V->>Y: tUSD8 transfer
 ```
 
-## How it works
+## ⚙️ How it works
 
 1. **Vault.** An employer creates a vault through the factory and deposits tUSD8.
 2. **Confirmation of payee.** The employer invites a payee by a hash of their name and a secret salt, and gives the payee's wallet address. The payee opens the invite link and confirms from that wallet. Any other wallet is refused with `UnexpectedWallet`, even one that copied the secret from a pending transaction. The confirmed wallet is registered in an ERC-8004 style identity registry. The owner can unlink a wrong wallet with `revokePayee`, which also retires that invite.
@@ -69,7 +134,7 @@ sequenceDiagram
 
 Every rejection is a custom error and every action emits an event. The web app turns both into plain English and links each event to the explorer.
 
-## How it uses the QDay platform
+## 🌐 How it uses the QDay platform
 
 | Piece | How PayWarden uses it |
 | --- | --- |
@@ -80,30 +145,24 @@ Every rejection is a custom error and every action emits an event. The web app t
 | **Spending limits and scoped keys** | `AgentSpendPolicy` works like a scoped session key: one key, hard per-run, per-person and per-period caps, an expiry, and instant revoke. It's enforced on-chain at proposal and again at payment. Native ERC-4337 session keys are on the [roadmap](docs/ROADMAP.md). |
 | **EVM version** | Aevum doesn't run `MCOPY` (Cancun), so the contracts are compiled for Shanghai (`evm_version = "shanghai"`, OpenZeppelin 5.1). |
 
-## Repository layout
+## 📜 Deployments
 
-| Folder | What it is |
-| --- | --- |
-| `contracts/` | Foundry project: `PayrollVault`, `PayrollVaultFactory`, `AgentSpendPolicy`, `IdentityRegistry` |
-| `web/` | Next.js, wagmi, viem, RainbowKit, Tailwind app for the employer and the payee |
-| `agent/` | Node and TypeScript service that turns a timesheet into a guarded `proposeRun` |
-| `docs/` | How it works, roadmap, demo script and submission notes |
+Every deployment and the exact commit it was built from. Vaults and spend policies are created by the factory, so they come from the factory's commit.
 
-## Network and deployed contracts
+| Deployment | Address | Built from commit | Deploy transaction |
+| --- | --- | --- | --- |
+| PayrollVaultFactory (current, verified) | [`0x624C…198E`](https://explorer-test.qday.info/address/0x624C478779CCc80299bAa2A22833bab88e18198E) | [`feb30d4`](https://github.com/africtoby/paywarden/commit/feb30d4) | [`0xf24a4ac3…7101`](https://explorer-test.qday.info/tx/0xf24a4ac3ace4af062c13fbdb2f90d8bbfd05105f72d973e9e2d8f6e6c5ed7101) |
+| IdentityRegistry (verified) | [`0x65b0…6F85`](https://explorer-test.qday.info/address/0x65b0B1df79B5A61021feF2BfA489a49A6b646F85) | [`652ecba`](https://github.com/africtoby/paywarden/commit/652ecba) | [`0xac68426f…1b22`](https://explorer-test.qday.info/tx/0xac68426f651d768b8a86deb395558199f394e603343c10f8ac21d55ac8ab1b22) |
+| Demo vault + spend policy | [`0x1712…3C76`](https://explorer-test.qday.info/address/0x171290CcBA179A9B8f89ff408134F09F33Da3C76), [`0x6dA8…fE40`](https://explorer-test.qday.info/address/0x6dA8BE510De086f61D9819906203b15AE433fE40) | [`feb30d4`](https://github.com/africtoby/paywarden/commit/feb30d4) (via the factory) | [`0x3f0ff2dd…1c83`](https://explorer-test.qday.info/tx/0x3f0ff2ddc376e7e5d1c78b55ccf0404277f5b83ac5e26b956202acb203261c83) |
+| PayrollVaultFactory (previous, shown in the video) | [`0xC128…80DA`](https://explorer-test.qday.info/address/0xC12819acfEA15773cE49c001f6F23842cc4480DA) | [`078af3d`](https://github.com/africtoby/paywarden/commit/078af3d) | [`0xb9679ee7…cead`](https://explorer-test.qday.info/tx/0xb9679ee7101ceb1095c2a15bb67ffd1a9ec00dfb4eae00c812160ffd1cb5cead) |
+| Web app | [paywarden.me](https://paywarden.me) | `main`, auto-deployed by Vercel on every push | n/a |
+| tUSD8 (QDay's test stablecoin) | [`0x4565…3483`](https://explorer-test.qday.info/address/0x456569838f1d43009A91ebA4263147Afd7233483) | n/a | n/a |
 
 - Network: QDay Aevum Testnet, chain id 44005
 - RPC: https://rpc-test.qday.info
 - Explorer: https://explorer-test.qday.info
 
-| Contract | Address |
-| --- | --- |
-| tUSD8 | [0x456569838f1d43009A91ebA4263147Afd7233483](https://explorer-test.qday.info/address/0x456569838f1d43009A91ebA4263147Afd7233483) |
-| PayrollVaultFactory (verified) | [0x624C478779CCc80299bAa2A22833bab88e18198E](https://explorer-test.qday.info/address/0x624C478779CCc80299bAa2A22833bab88e18198E) |
-| IdentityRegistry (verified) | [0x65b0B1df79B5A61021feF2BfA489a49A6b646F85](https://explorer-test.qday.info/address/0x65b0B1df79B5A61021feF2BfA489a49A6b646F85) |
-| Demo vault | [0x171290CcBA179A9B8f89ff408134F09F33Da3C76](https://explorer-test.qday.info/address/0x171290CcBA179A9B8f89ff408134F09F33Da3C76) |
-| Demo spend policy | [0x6dA8BE510De086f61D9819906203b15AE433fE40](https://explorer-test.qday.info/address/0x6dA8BE510De086f61D9819906203b15AE433fE40) |
-
-## On-chain proof
+## ✅ On-chain proof
 
 A full payday on the current contracts, 27 Nov 2026. The assistant's limits: $3 per run, $0.80 per person, $10 per 7 days, valid 90 days. Click any hash to open it on the explorer.
 
@@ -129,7 +188,7 @@ The refused rows were sent on purpose, with a fixed gas limit, so the refusal is
 
 The demo video was recorded on the previous deployment (factory `0xC128…80DA`). That payday is also on the explorer: [pay transaction](https://explorer-test.qday.info/tx/0x5ee35c50dedf2b4aa8e92dbd6b405efde04146e0f280b52df94cb18afce87640).
 
-## Run it yourself
+## 🚀 Run it yourself
 
 You need Node 20 or newer, Git, and [Foundry](https://book.getfoundry.sh/getting-started/installation). Use test wallets only.
 
@@ -139,7 +198,8 @@ cd paywarden
 cp .env.example .env     # fill in test keys, never commit this file
 ```
 
-### Environment variables
+<details>
+<summary><b>Environment variables</b> (click to open)</summary>
 
 All live in the root `.env` (copy of `.env.example`). The agent reads `agent/.env`, so copy the file there too.
 
@@ -157,6 +217,8 @@ All live in the root `.env` (copy of `.env.example`). The agent reads `agent/.en
 | `LLM_API_KEY` | agent | no | Anthropic API key for the LLM parser. Without it, the plain parser is used. |
 | `LLM_MODEL` | agent | no | Model id for the LLM parser |
 | `NEXT_PUBLIC_WALLETCONNECT_ID` | web (`web/.env.local`) | no | WalletConnect project id, for phone wallets. Browser wallets work without it. |
+
+</details>
 
 ### Contracts
 
@@ -220,7 +282,10 @@ npm test                 # includes a local-chain test that deploys the real con
 
 The integration test needs `anvil` and a built `contracts/out` (`forge build`). It is skipped if `anvil` is missing.
 
-## API examples
+## 🔌 API examples
+
+<details>
+<summary><b>Contract calls with <code>cast</code></b> (click to open)</summary>
 
 Calls with Foundry's `cast` (amounts are tUSD8 units: `500000` = $0.50).
 
@@ -251,7 +316,9 @@ cast send $VAULT "pause()" --private-key $OWNER_KEY --rpc-url $RPC_URL
 
 The run key is `keccak256(abi.encode(payeeIds, amounts, memoHash))`, which is also the return value of `proposeRun` and indexed in the `RunProposed` event.
 
-## Safety notes
+</details>
+
+## 🛡️ Safety notes
 
 - The assistant key can only call `proposeRun`. It cannot approve, pay, withdraw or change limits.
 - Caps are enforced on-chain at proposal time and again at payment time.
@@ -259,13 +326,26 @@ The run key is `keccak256(abi.encode(payeeIds, amounts, memoHash))`, which is al
 - Invites bound to a wallet can only be confirmed by that wallet. An invite without one is open to whoever confirms first with the secret, so the run card shows each payee's wallet to check before you approve.
 - Test tokens and test wallets only. This code has not been audited.
 
-## Known constraints
+## ⚠️ Known constraints
 
 - If one transfer in a run fails, the whole run reverts and nobody in it is paid. That's safe (no partial payroll), but one bad payee blocks the run until it's fixed.
 - The same payees, amounts and memo give the same run key, so a paid run can't be drafted twice. Put the period in the memo (for example `memo: Week 48`).
 - Invite links live in the employer's browser. Use Back up invites on the Payees page.
 - No ERC-4337 smart accounts or paymaster yet. See the [roadmap](docs/ROADMAP.md).
 
-## Licence
+## 🗺️ Roadmap
+
+Who it's for, the business model and the path to mainnet: [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## 📂 Repository layout
+
+| Folder | What it is |
+| --- | --- |
+| `contracts/` | Foundry project: `PayrollVault`, `PayrollVaultFactory`, `AgentSpendPolicy`, `IdentityRegistry` |
+| `web/` | Next.js, wagmi, viem, RainbowKit, Tailwind app for the employer and the payee |
+| `agent/` | Node and TypeScript service that turns a timesheet into a guarded `proposeRun` |
+| `docs/` | How it works, roadmap, demo script and submission notes |
+
+## 📄 Licence
 
 MIT. See [LICENSE](LICENSE). Third-party notices are in [NOTICE](NOTICE).
