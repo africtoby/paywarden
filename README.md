@@ -354,7 +354,7 @@ Who it's for, the business model and the path to mainnet: [docs/ROADMAP.md](docs
 | `contracts/` | Foundry project: `PayrollVault`, `PayrollVaultFactory`, `AgentSpendPolicy`, `IdentityRegistry` |
 | `web/` | Next.js, wagmi, viem, RainbowKit, Tailwind app for the employer and the payee |
 | `agent/` | Node and TypeScript service that turns a timesheet into a guarded `proposeRun` |
-| `docs/` | How it works, roadmap, demo script and submission notes |
+| `docs/` | How it works (with a real testnet case study), roadmap, and README images |
 
 ## Licence
 
