@@ -8,7 +8,8 @@ An assistant reads a timesheet and drafts a pay run in tUSD8. A smart contract o
 
 Built for the Aevum Builder Challenge #1 (QDay, DoraHacks). All settlement happens on the QDay Aevum testnet (chain 44005).
 
-- **Demo video (2:17):** (link coming soon)
+- **Demo video (2:17):** https://youtu.be/EGevjYKSC4A
+- **30-second cut:** https://youtube.com/shorts/bFmywFdl-NU
 - **Live app:** (link coming soon)
 - **How it works, with a real testnet run:** [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md)
 - **Who it's for, business model and roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)

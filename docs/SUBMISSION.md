@@ -15,8 +15,8 @@ Payees prove their wallet themselves (confirmation of payee), and invites can be
 
 ## Links
 - Repository: https://github.com/africtoby/paywarden
-- Demo video (2:17): (link coming soon)
-- 30-second cut: (link coming soon)
+- Demo video (2:17): https://youtu.be/EGevjYKSC4A
+- 30-second cut: https://youtube.com/shorts/bFmywFdl-NU
 - How it works, with a real testnet run: https://github.com/africtoby/paywarden/blob/main/docs/HOW-IT-WORKS.md
 - Live app: (link coming soon)
 - Roadmap and business model: https://github.com/africtoby/paywarden/blob/main/docs/ROADMAP.md
