@@ -31,11 +31,11 @@ An assistant reads a timesheet and drafts a pay run in tUSD8. A smart contract o
 
 > [!TIP]
 > **The 5-minute tour**
-> 1. Watch the [2-minute demo](https://youtu.be/EGevjYKSC4A).
-> 2. Try it at [paywarden.me](https://paywarden.me) (Aevum testnet; free test tokens from the [QDay faucet](https://faucet.qday.info/en)).
-> 3. See every address and the commit it was built from in [Deployments](#deployments).
-> 4. Click through 15 real transactions, including 3 refusals, in [On-chain proof](#on-chain-proof).
-> 5. The code as submitted is tagged [`submission-v1`](https://github.com/africtoby/paywarden/tree/submission-v1).
+> 1. [Try it without a wallet](https://paywarden.me/try): run a payday in five steps, try to trick the assistant, and watch the contract's checks refuse it.
+> 2. Watch the [2-minute demo](https://youtu.be/EGevjYKSC4A).
+> 3. Read the [attack test](docs/ATTACK-TEST.md): 45 of 45 attacks refused on Aevum testnet, 0 wrong payments, every refusal an on-chain transaction.
+> 4. See every address and the commit it was built from in [Deployments](#deployments), and a full payday in [On-chain proof](#on-chain-proof).
+> 5. Use the real app at [paywarden.me](https://paywarden.me) (free test tokens from the [QDay faucet](https://faucet.qday.info/en)). The code as submitted is tagged [`submission-v1`](https://github.com/africtoby/paywarden/tree/submission-v1).
 
 ## Watch it
 
@@ -174,6 +174,8 @@ Every deployment and the exact commit it was built from. Vaults and spend polici
 
 ## On-chain proof
 
+**Attack test.** A script throws 45 attacks at a fresh vault on Aevum testnet: poisoned and inflated amounts, cap breaches, unconfirmed and look-alike payees, malformed drafts, replays, the assistant key trying owner powers (approve, pay, withdraw, raise its caps, take ownership), a copied invite, paused, expired and switched-off permissions, and prompt-injected timesheets through the agent's own pipeline. **45 of 45 refused, 0 wrong payments, 73 transactions.** 40 refusals are failed transactions on the explorer; 5 were stopped earlier by the agent. Full table with links: [docs/ATTACK-TEST.md](docs/ATTACK-TEST.md). Run it yourself with `cd agent && npm run attack-test`.
+
 A full payday on the current contracts, 27 Nov 2026. The assistant's limits: $3 per run, $0.80 per person, $10 per 7 days, valid 90 days. Click any hash to open it on the explorer.
 
 | Step | Transaction |
@@ -288,6 +290,7 @@ A timesheet is lines of `name, hours, rate`, with an optional first line `memo: 
 
 ```bash
 npm test                 # includes a local-chain test that deploys the real contracts
+npm run attack-test      # 45 attacks against a fresh vault on Aevum testnet; writes docs/ATTACK-TEST.md
 ```
 
 The integration test needs `anvil` and a built `contracts/out` (`forge build`). It is skipped if `anvil` is missing.
@@ -330,7 +333,7 @@ The run key is `keccak256(abi.encode(payeeIds, amounts, memoHash))`, which is al
 
 ## Safety notes
 
-- The assistant key can only call `proposeRun`. It cannot approve, pay, withdraw or change limits.
+- The assistant key can only call `proposeRun`. It cannot approve, pay, withdraw or change limits. The [attack test](docs/ATTACK-TEST.md) tries each of those on-chain and records the refusal.
 - Caps are enforced on-chain at proposal time and again at payment time.
 - Payee names and salts stay in the employer's browser; the chain stores only the hash.
 - Every invite made in the app is bound to the payee's wallet, so only that wallet can confirm it, even if someone copies the link or sees the secret in a pending transaction (proven on-chain: `UnexpectedWallet`). The contract also accepts an open invite (`address(0)`) for direct integrations; the app never sends one.
