@@ -35,7 +35,7 @@ Payees prove their wallet themselves (confirmation of payee), and invites can be
 ## Known limits
 - Test tokens and test wallets only; not audited.
 - Payee names and salts are kept in the employer's browser; clearing it loses the invite links, not the on-chain confirmations.
-- Invites can be bound to the payee's wallet, so a copied secret cannot be used by anyone else (proven on-chain: UnexpectedWallet). An invite without a wallet stays open to whoever confirms first. Revoking a payee retires the invite.
+- Every invite from the app is bound to the payee's wallet, so a copied secret cannot be used by anyone else (proven on-chain: UnexpectedWallet). Direct contract callers can still make an open invite (address(0)). Revoking a payee retires the invite.
 - If one transfer in a run fails, the whole run reverts (no partial payroll).
 - Invite links live in the employer's browser; the Payees page has backup and restore.
 - ERC-4337 smart-account and paymaster support is not included.

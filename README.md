@@ -29,6 +29,14 @@ An assistant reads a timesheet and drafts a pay run in tUSD8. A smart contract o
 
 ---
 
+> [!TIP]
+> **For judges, the 5-minute path:**
+> 1. ▶ Watch the [2-minute demo](https://youtu.be/EGevjYKSC4A).
+> 2. 🌐 Try it at [paywarden.me](https://paywarden.me) (Aevum testnet; free test tokens from the [QDay faucet](https://faucet.qday.info/en)).
+> 3. 📜 See every address and the commit it was built from in [Deployments](#-deployments).
+> 4. ✅ Click through 15 real transactions, including 3 refusals, in [On-chain proof](#-on-chain-proof).
+> 5. 🏷️ The submitted code is tagged [`submission-v1`](https://github.com/africtoby/paywarden/tree/submission-v1).
+
 ## 🎬 Watch it
 
 <table>
@@ -248,7 +256,7 @@ npm install
 npm run dev              # http://localhost:3000
 ```
 
-Add the Aevum testnet to your wallet (chain id 44005, RPC above, symbol tQDAY). Get tQDAY and tUSD8 from the QDay faucet. In the app:
+Add the Aevum testnet to your wallet (chain id 44005, RPC above, symbol tQDAY). Get test tokens from the QDay faucet: [tQDAY for gas](https://faucet.qday.info/en) and [tUSD8 to pay with](https://faucet.qday.info/en?token=tusd8) (the payee wallet needs a little tQDAY too). In the app:
 
 1. Connect, create a vault and deposit.
 2. Set the assistant's permissions.
@@ -323,7 +331,7 @@ The run key is `keccak256(abi.encode(payeeIds, amounts, memoHash))`, which is al
 - The assistant key can only call `proposeRun`. It cannot approve, pay, withdraw or change limits.
 - Caps are enforced on-chain at proposal time and again at payment time.
 - Payee names and salts stay in the employer's browser; the chain stores only the hash.
-- Invites bound to a wallet can only be confirmed by that wallet. An invite without one is open to whoever confirms first with the secret, so the run card shows each payee's wallet to check before you approve.
+- Every invite made in the app is bound to the payee's wallet, so only that wallet can confirm it, even if someone copies the link or sees the secret in a pending transaction (proven on-chain: `UnexpectedWallet`). The contract also accepts an open invite (`address(0)`) for direct integrations; the app never sends one.
 - Test tokens and test wallets only. This code has not been audited.
 
 ## ⚠️ Known constraints

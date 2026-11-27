@@ -79,6 +79,6 @@ The agent simulates first, so it never sends this. To leave proof on-chain, the 
 ## Known limits
 
 - Testnet tokens and test wallets only. Not audited.
-- An invite without a wallet is open to whoever confirms first with the secret. Give the payee's wallet when inviting (the app recommends it) to close this.
+- The app always binds an invite to the payee's wallet. The contract also allows an open invite (`address(0)`) for direct integrations, which anyone holding the secret could confirm first.
 - If one transfer in a run fails, the whole run reverts: no partial payroll, but one bad payee blocks the run.
 - Invite names and salts live in the employer's browser.

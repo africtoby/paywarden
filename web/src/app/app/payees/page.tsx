@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { isAddress, isHex, zeroAddress, type Address, type Hex } from "viem";
+import { isAddress, isHex, type Address, type Hex } from "viem";
 import { ConnectPrompt } from "@/components/connect-prompt";
 import { Seal } from "@/components/seal";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ export default function PayeesPage() {
   const [name, setName] = useState("");
   const [walletInput, setWalletInput] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const walletRef = useRef<HTMLInputElement>(null);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -75,15 +76,17 @@ export default function PayeesPage() {
   };
 
   const walletTrim = walletInput.trim();
-  const walletError = walletTrim !== "" && !isAddress(walletTrim) ? "That is not a wallet address. It starts with 0x and has 42 characters." : null;
+  // Every invite from the app is bound to the payee's wallet, so a copied invite link is useless to anyone else.
+  const walletValid = isAddress(walletTrim);
+  const walletError = walletTrim !== "" && !walletValid ? "That is not a wallet address. It starts with 0x and has 42 characters." : null;
 
   const invite = async () => {
-    if (!v.vault || !name.trim() || walletError) return;
+    if (!v.vault || !name.trim() || !walletValid) return;
     const salt = randomSalt();
     const id = payeeId(name.trim(), salt);
-    const wallet = walletTrim ? (walletTrim as Address) : undefined;
+    const wallet = walletTrim as Address;
     setBusy(true);
-    const hash = await tx(`Invite ${name.trim()}`, { address: v.vault, abi: payrollVaultAbi, functionName: "invitePayee", args: [id, wallet ?? zeroAddress] });
+    const hash = await tx(`Invite ${name.trim()}`, { address: v.vault, abi: payrollVaultAbi, functionName: "invitePayee", args: [id, wallet] });
     setBusy(false);
     if (!hash) return;
     save([{ name: name.trim(), salt, id, wallet }, ...invites], "Copy the invite link now: this browser could not save it.");
@@ -120,23 +123,19 @@ export default function PayeesPage() {
     }
   };
 
-  // The old salt is public once a payee has confirmed, so unlinking also retires the invite and issues a new one.
+  // Unlinking retires the invite for good (its salt is public once confirmed). The owner then invites the payee
+  // again with the correct wallet, so the new invite is wallet-bound too.
   const unlink = async (i: Invite) => {
     if (!v.vault) return;
     setBusy(true);
     const revoked = await tx(`Unlink ${i.name}'s wallet`, { address: v.vault, abi: payrollVaultAbi, functionName: "revokePayee", args: [i.id] });
-    if (revoked) {
-      const salt = randomSalt();
-      const id = payeeId(i.name, salt);
-      // The new invite is open to any wallet: the old one was wrong, and the payee confirms with the right one.
-      const invited = await tx(`New invite for ${i.name}`, { address: v.vault, abi: payrollVaultAbi, functionName: "invitePayee", args: [id, zeroAddress] });
-      if (invited) {
-        save(invites.map((x) => (x.id === i.id ? { name: i.name, salt, id } : x)), "Copy the new invite link now: this browser could not save it.");
-      } else {
-        toast.error(`${i.name}'s wallet is unlinked, but the new invite was not sent.`, { description: "Add them again from Invite a payee." });
-      }
-    }
     setBusy(false);
+    if (!revoked) return;
+    save(invites.filter((x) => x.id !== i.id), "This browser could not update the invite list.");
+    setName(i.name);
+    setWalletInput("");
+    toast.info(`Enter ${i.name}'s correct wallet to invite them again.`);
+    walletRef.current?.focus();
   };
 
   const copy = async (i: Invite) => {
@@ -189,16 +188,16 @@ export default function PayeesPage() {
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="pwallet">
-              Their wallet <span className="font-normal text-muted-foreground">(recommended)</span>
+              Their wallet
             </Label>
-            <Input id="pwallet" value={walletInput} onChange={(e) => setWalletInput(e.target.value)} placeholder="0x…" aria-invalid={!!walletError} aria-describedby="pwallet-help" className="font-mono" spellCheck={false} />
+            <Input id="pwallet" ref={walletRef} required value={walletInput} onChange={(e) => setWalletInput(e.target.value)} placeholder="0x…" aria-invalid={!!walletError} aria-describedby="pwallet-help" className="font-mono" spellCheck={false} />
           </div>
-          <Button className="rounded-full" disabled={busy || !name.trim() || !!walletError} onClick={invite}>
+          <Button className="rounded-full" disabled={busy || !name.trim() || !walletValid} onClick={invite}>
             Send invite
           </Button>
         </div>
         <p id="pwallet-help" className={`mt-2 max-w-2xl text-[13px] ${walletError ? "text-[var(--refused)]" : "text-muted-foreground"}`}>
-          {walletError ?? "With their wallet, only that wallet can accept the invite, even if someone else sees the link. Leave it empty if you don't know it yet."}
+          {walletError ?? "Ask them for their wallet address. Only that wallet can accept the invite, even if someone else gets hold of the link."}
         </p>
       </section>
 
@@ -270,7 +269,7 @@ export default function PayeesPage() {
                     <StatusChip kind={wallet ? "signed" : "awaiting"}>{wallet ? "Confirmed" : "Invited"}</StatusChip>
                     {wallet && (
                       <Button variant="outline" size="sm" className="rounded-full" disabled={busy} onClick={() => unlink(i)}>
-                        Unlink and re-invite
+                        Unlink wallet
                       </Button>
                     )}
                     {!wallet && (
