@@ -1,6 +1,6 @@
 # Security policy
 
-PayWarden is a hackathon project that runs on the QDay Aevum **testnet** with test tokens. It has not been audited. Do not use it with real funds.
+PayWarden is a hackathon project that runs on the QDay Aevum **testnet** with test tokens. Do not use it with real funds.
 
 ## Reporting a vulnerability
 
