@@ -69,6 +69,9 @@ export default function Landing() {
                     <span>Launch app</span>
                   </Link>
                 </Magnetic>
+                <Link href="/try" className="inline-flex h-12 items-center rounded-full border border-[var(--mist)]/30 px-6 text-[16px] text-[var(--mist)] transition-colors hover:border-[var(--gold)] hover:bg-[var(--mist)]/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]">
+                  Try it without a wallet
+                </Link>
                 <a href="#trick" className="text-[15px] text-[var(--mist)]/75 underline decoration-[var(--mist)]/25 underline-offset-[6px] transition-colors hover:text-[var(--mist)] hover:decoration-[var(--gold)]">
                   Watch it refuse a bad draft
                 </a>
