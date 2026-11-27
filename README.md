@@ -39,6 +39,8 @@ An assistant reads a timesheet and drafts a pay run in tUSD8. A smart contract o
 
 ## 🎬 Watch it
 
+https://github.com/user-attachments/assets/7ecce811-b1b1-4901-b68a-cffea238a4d8
+
 <table>
   <tr>
     <td width="50%" align="center">
