@@ -10,6 +10,9 @@ contract Handler is Base {
     uint256 public executions;
     bytes32[] public keys;
     mapping(bytes32 => uint256) public timesExecuted;
+    /// @dev How many times each (payee, memo) line was actually paid.
+    mapping(bytes32 payeeId => mapping(bytes32 memo => uint256)) public timesLinePaid;
+    bytes32[4] internal memos = [keccak256("w1"), keccak256("w2"), keccak256("w3"), keccak256("w4")];
 
     function setUp() public override {}
 
@@ -19,13 +22,26 @@ contract Handler is Base {
         employer = employer_;
         aliceId = a;
         bobId = b;
+        payeeKey[a] = ALICE_KEY;
+        payeeKey[b] = BOB_KEY;
     }
 
-    function propose(uint256 x, uint256 y, uint256 memo) external {
+    function memoAt(uint256 i) external view returns (bytes32) {
+        return memos[i];
+    }
+
+    /// @dev Memos come from a small set (four pay periods) so runs keep competing for the same lines;
+    /// `which` picks Alice, Bob or both.
+    function propose(uint256 x, uint256 y, uint256 memo, uint256 which) external {
         x = bound(x, 1, 4_000 * USD);
         y = bound(y, 1, 4_000 * USD);
+        bytes32 m = memos[memo % memos.length];
+        which = which % 3;
+        bytes32[] memory ids = which == 0 ? _one(aliceId) : which == 1 ? _one(bobId) : _ids(aliceId, bobId);
+        uint256[] memory amts = which == 2 ? _amts(x, y) : _oneAmt(x);
+        bytes[] memory sigs = _sigs(ids, amts, m);
         vm.prank(agent);
-        try vault.proposeRun(_ids(aliceId, bobId), _amts(x, y), bytes32(memo)) returns (bytes32 k) {
+        try vault.proposeRun(ids, amts, m, sigs) returns (bytes32 k) {
             keys.push(k);
         } catch {}
     }
@@ -46,10 +62,13 @@ contract Handler is Base {
         if (keys.length == 0) return;
         vm.warp(block.timestamp + bound(skip, 0, 2 days));
         bytes32 k = keys[i % keys.length];
-        uint256 total = vault.getRun(k).total;
+        PayrollVault.Run memory r = vault.getRun(k);
         vm.prank(employer);
         try vault.executeRun(k) {
-            paidOut += total;
+            paidOut += r.total;
+            for (uint256 j; j < r.payeeIds.length; ++j) {
+                timesLinePaid[r.payeeIds[j]][r.memoHash]++;
+            }
             executions++;
             timesExecuted[k]++;
         } catch {}
@@ -87,6 +106,17 @@ contract InvariantsTest is Base {
         uint256 n = h.keyCount();
         for (uint256 i; i < n; ++i) {
             assertLe(h.timesExecuted(h.keys(i)), 1);
+        }
+    }
+
+    /// @dev A payee is never paid twice for the same period (memoHash), whichever runs carried the line.
+    function invariant_line_paid_at_most_once() public view {
+        for (uint256 i; i < 4; ++i) {
+            bytes32 m = h.memoAt(i);
+            assertLe(h.timesLinePaid(aliceId, m), 1);
+            assertLe(h.timesLinePaid(bobId, m), 1);
+            assertEq(vault.paidLine(aliceId, m), h.timesLinePaid(aliceId, m) == 1);
+            assertEq(vault.paidLine(bobId, m), h.timesLinePaid(bobId, m) == 1);
         }
     }
 }

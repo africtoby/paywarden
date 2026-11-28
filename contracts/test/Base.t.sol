@@ -33,8 +33,11 @@ abstract contract Base is Test {
 
     address internal employer = makeAddr("employer");
     address internal agent = makeAddr("agent");
-    address internal alice = makeAddr("alice");
-    address internal bob = makeAddr("bob");
+    // Same addresses makeAddr("alice") / makeAddr("bob") gave; the keys sign the payees' pay lines.
+    uint256 internal constant ALICE_KEY = uint256(keccak256("alice"));
+    uint256 internal constant BOB_KEY = uint256(keccak256("bob"));
+    address internal alice = vm.addr(ALICE_KEY);
+    address internal bob = vm.addr(BOB_KEY);
     address internal stranger = makeAddr("stranger");
 
     bytes32 internal aliceId;
@@ -42,6 +45,10 @@ abstract contract Base is Test {
     bytes32 internal constant ALICE_SALT = keccak256("alice-salt");
     bytes32 internal constant BOB_SALT = keccak256("bob-salt");
     bytes32 internal constant MEMO = keccak256("timesheet-2026-11");
+    bytes32 internal constant PAYLINE_TYPEHASH = keccak256("PayLine(bytes32 payeeId,uint256 amount,bytes32 memoHash)");
+
+    /// @dev Signing key of each confirmed payee's wallet; 0 means "no key" and yields an empty signature.
+    mapping(bytes32 payeeId => uint256) internal payeeKey;
 
     function setUp() public virtual {
         token = new MockUSD8();
@@ -77,6 +84,61 @@ abstract contract Base is Test {
         vault.confirmPayee("Alice", ALICE_SALT);
         vm.prank(bob);
         vault.confirmPayee("Bob", BOB_SALT);
+        payeeKey[aliceId] = ALICE_KEY;
+        payeeKey[bobId] = BOB_KEY;
+    }
+
+    // ------------------------------------------------------------ signing
+    // Digests are built here rather than read from the vault: an external call inside a proposeRun
+    // argument list would use up a pending vm.prank / vm.expectRevert.
+
+    function _domain(address v, uint256 chainId) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256("PayWarden"),
+                keccak256("1"),
+                chainId,
+                v
+            )
+        );
+    }
+
+    function _digestFor(address v, uint256 chainId, bytes32 id, uint256 amount, bytes32 memo)
+        internal
+        pure
+        returns (bytes32)
+    {
+        bytes32 structHash = keccak256(abi.encode(PAYLINE_TYPEHASH, id, amount, memo));
+        return keccak256(abi.encodePacked(hex"1901", _domain(v, chainId), structHash));
+    }
+
+    function _signWith(uint256 key, bytes32 digest) internal pure returns (bytes memory) {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _sig(bytes32 id, uint256 amount, bytes32 memo) internal view returns (bytes memory) {
+        uint256 key = payeeKey[id];
+        if (key == 0) return "";
+        return _signWith(key, _digestFor(address(vault), block.chainid, id, amount, memo));
+    }
+
+    /// @dev One signature per payee id; a missing amount (length-mismatch tests) signs 0.
+    function _sigs(bytes32[] memory ids, uint256[] memory amts, bytes32 memo)
+        internal
+        view
+        returns (bytes[] memory sigs)
+    {
+        sigs = new bytes[](ids.length);
+        for (uint256 i; i < ids.length; ++i) {
+            sigs[i] = _sig(ids[i], i < amts.length ? amts[i] : 0, memo);
+        }
+    }
+
+    /// @dev proposeRun with every line signed by its payee.
+    function _proposeSigned(bytes32[] memory ids, uint256[] memory amts, bytes32 memo) internal returns (bytes32) {
+        return vault.proposeRun(ids, amts, memo, _sigs(ids, amts, memo));
     }
 
     function _invite(bytes32 id) internal {
@@ -113,6 +175,6 @@ abstract contract Base is Test {
 
     function _propose(uint256 a, uint256 b) internal returns (bytes32 key) {
         vm.prank(agent);
-        key = vault.proposeRun(_ids(aliceId, bobId), _amts(a, b), MEMO);
+        key = _proposeSigned(_ids(aliceId, bobId), _amts(a, b), MEMO);
     }
 }

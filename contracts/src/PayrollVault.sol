@@ -7,6 +7,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {AgentSpendPolicy} from "./AgentSpendPolicy.sol";
 
 interface IIdentityRegistry is IERC721 {
@@ -17,7 +19,9 @@ interface IIdentityRegistry is IERC721 {
 /// @notice Employer-owned vault holding tUSD8 (6 decimals; every amount here is a raw 6-dp unit).
 ///         An agent may only propose runs inside the AgentSpendPolicy limits. The owner approves
 ///         after a review window and executes; pause() freezes everything except cancel/withdraw.
-contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
+///         Every pay line must carry an EIP-712 signature from that payee's confirmed wallet, and a
+///         (payee, memoHash) line is paid at most once.
+contract PayrollVault is Ownable, Pausable, ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
 
     enum Status {
@@ -39,6 +43,7 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
     }
 
     uint256 public constant MAX_PAYEES = 50;
+    bytes32 public constant PAYLINE_TYPEHASH = keccak256("PayLine(bytes32 payeeId,uint256 amount,bytes32 memoHash)");
 
     IERC20 public immutable token;
     AgentSpendPolicy public immutable policy;
@@ -52,6 +57,8 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
     mapping(bytes32 payeeId => address) public expectedWallet;
     mapping(address wallet => bytes32) public walletPayee;
     mapping(bytes32 payeeId => uint256) public payeeIdentityId;
+    /// @notice True once a payee has been paid for a memoHash (period); that signed line can never pay again.
+    mapping(bytes32 payeeId => mapping(bytes32 memoHash => bool)) public paidLine;
     mapping(bytes32 runKey => Run) private _runs;
 
     error NotAgent();
@@ -74,6 +81,8 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
     error RunNotCancellable(bytes32 runKey, Status status);
     error ReviewWindowOpen(uint64 executableAt);
     error InsufficientBalance(uint256 needed, uint256 available);
+    error InvalidWorkerSignature(bytes32 payeeId);
+    error LineAlreadyPaid(bytes32 payeeId, bytes32 memoHash);
 
     event Deposited(address indexed from, uint256 amount);
     event Withdrawn(address indexed to, uint256 amount);
@@ -96,7 +105,7 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
         AgentSpendPolicy policy_,
         IIdentityRegistry registry_,
         uint64 reviewWindow_
-    ) Ownable(owner_) {
+    ) Ownable(owner_) EIP712("PayWarden", "1") {
         if (address(token_) == address(0) || address(policy_) == address(0)) {
             revert ZeroAddress();
         }
@@ -194,26 +203,47 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
 
     // ----------------------------------------------------------- run flow
 
+    /// @notice EIP-712 digest a payee's wallet signs to agree to one pay line for one period (memoHash).
+    function payLineDigest(bytes32 payeeId, uint256 amount, bytes32 memoHash) public view returns (bytes32) {
+        return _hashTypedDataV4(keccak256(abi.encode(PAYLINE_TYPEHASH, payeeId, amount, memoHash)));
+    }
+
+    /// @notice EIP-712 domain separator (name "PayWarden", version "1", this chain, this vault).
+    function domainSeparator() external view returns (bytes32) {
+        return _domainSeparatorV4();
+    }
+
     /// @notice Agent-only. Creates a pending run; runKey is derived from the content, so a retry reverts.
     /// A cancelled run can be proposed again (same content, same key); a pending or paid one cannot.
-    function proposeRun(bytes32[] calldata payeeIds, uint256[] calldata amounts, bytes32 memoHash)
-        external
-        whenNotPaused
-        returns (bytes32 runKey)
-    {
+    /// signatures[i] is payee i's signature over payLineDigest(payeeIds[i], amounts[i], memoHash),
+    /// checked against the payee's confirmed wallet (EOA or ERC-1271 smart wallet).
+    function proposeRun(
+        bytes32[] calldata payeeIds,
+        uint256[] calldata amounts,
+        bytes32 memoHash,
+        bytes[] calldata signatures
+    ) external whenNotPaused returns (bytes32 runKey) {
         uint256 n = payeeIds.length;
         if (n == 0) revert EmptyRun();
         if (n > MAX_PAYEES) revert TooManyPayees(n);
-        if (n != amounts.length) revert LengthMismatch();
+        if (n != amounts.length || n != signatures.length) revert LengthMismatch();
 
         policy.checkRun(msg.sender, payeeIds, amounts); // reverts NotAgent / cap errors
 
         uint256 total;
         for (uint256 i; i < n; ++i) {
+            bytes32 payeeId = payeeIds[i];
             if (amounts[i] == 0) revert ZeroAmount();
-            if (payeeWallet[payeeIds[i]] == address(0)) revert PayeeNotConfirmed(payeeIds[i]);
+            address wallet = payeeWallet[payeeId];
+            if (wallet == address(0)) revert PayeeNotConfirmed(payeeId);
             for (uint256 j; j < i; ++j) {
-                if (payeeIds[j] == payeeIds[i]) revert DuplicatePayee(payeeIds[i]);
+                if (payeeIds[j] == payeeId) revert DuplicatePayee(payeeId);
+            }
+            if (paidLine[payeeId][memoHash]) revert LineAlreadyPaid(payeeId, memoHash);
+            if (!SignatureChecker.isValidSignatureNow(
+                    wallet, payLineDigest(payeeId, amounts[i], memoHash), signatures[i]
+                )) {
+                revert InvalidWorkerSignature(payeeId);
             }
             total += amounts[i];
         }
@@ -268,6 +298,8 @@ contract PayrollVault is Ownable, Pausable, ReentrancyGuard {
             bytes32 payeeId = r.payeeIds[i];
             address wallet = payeeWallet[payeeId];
             if (wallet == address(0)) revert PayeeNotConfirmed(payeeId); // unlinked after the draft
+            if (paidLine[payeeId][r.memoHash]) revert LineAlreadyPaid(payeeId, r.memoHash); // paid by another run
+            paidLine[payeeId][r.memoHash] = true;
             token.safeTransfer(wallet, r.amounts[i]);
             emit PayeePaid(runKey, payeeId, wallet, r.amounts[i]);
         }

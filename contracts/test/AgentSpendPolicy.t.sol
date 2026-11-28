@@ -99,7 +99,11 @@ contract AgentSpendPolicyTest is Base {
         a = bound(a, 1, 10_000 * USD);
         b = bound(b, 1, 10_000 * USD);
         vm.prank(agent);
-        try vault.proposeRun(_ids(aliceId, bobId), _amts(a, b), MEMO) returns (bytes32 key) {
+        try vault.proposeRun(
+            _ids(aliceId, bobId), _amts(a, b), MEMO, _sigs(_ids(aliceId, bobId), _amts(a, b), MEMO)
+        ) returns (
+            bytes32 key
+        ) {
             assertLe(a, 3_000 * USD);
             assertLe(b, 3_000 * USD);
             assertLe(a + b, 5_000 * USD);
@@ -115,7 +119,11 @@ contract AgentSpendPolicyTest is Base {
         uint256 spent;
         for (uint256 i; i < 3; ++i) {
             vm.prank(agent);
-            try vault.proposeRun(_one(aliceId), _oneAmt(v[i]), bytes32(i + 1)) returns (bytes32 key) {
+            try vault.proposeRun(
+                _one(aliceId), _oneAmt(v[i]), bytes32(i + 1), _sigs(_one(aliceId), _oneAmt(v[i]), bytes32(i + 1))
+            ) returns (
+                bytes32 key
+            ) {
                 vm.prank(employer);
                 vault.approveRun(key);
                 vm.warp(block.timestamp + WINDOW);

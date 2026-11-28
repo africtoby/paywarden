@@ -204,7 +204,7 @@ contract PayrollVaultTest is Base {
         vault.revokePayee(aliceId);
         vm.prank(agent);
         vm.expectRevert(abi.encodeWithSelector(PayrollVault.PayeeNotConfirmed.selector, aliceId));
-        vault.proposeRun(_ids(aliceId, bobId), _amts(1 * USD, 1 * USD), keccak256("memo"));
+        _proposeSigned(_ids(aliceId, bobId), _amts(1 * USD, 1 * USD), keccak256("memo"));
     }
 
     function test_execute_after_revoke_reverts_and_keeps_funds() public {
@@ -260,10 +260,10 @@ contract PayrollVaultTest is Base {
     function test_propose_only_agent() public {
         vm.prank(stranger);
         vm.expectRevert(AgentSpendPolicy.NotAgent.selector);
-        vault.proposeRun(_one(aliceId), _oneAmt(1), MEMO);
+        _proposeSigned(_one(aliceId), _oneAmt(1), MEMO);
         vm.prank(employer);
         vm.expectRevert(AgentSpendPolicy.NotAgent.selector);
-        vault.proposeRun(_one(aliceId), _oneAmt(1), MEMO);
+        _proposeSigned(_one(aliceId), _oneAmt(1), MEMO);
     }
 
     function test_agent_cannot_approve_cancel_execute() public {
@@ -283,7 +283,7 @@ contract PayrollVaultTest is Base {
     function test_propose_empty_reverts() public {
         vm.prank(agent);
         vm.expectRevert(PayrollVault.EmptyRun.selector);
-        vault.proposeRun(new bytes32[](0), new uint256[](0), MEMO);
+        _proposeSigned(new bytes32[](0), new uint256[](0), MEMO);
     }
 
     function test_propose_too_many_reverts() public {
@@ -291,26 +291,26 @@ contract PayrollVaultTest is Base {
         uint256[] memory a = new uint256[](51);
         vm.prank(agent);
         vm.expectRevert(abi.encodeWithSelector(PayrollVault.TooManyPayees.selector, 51));
-        vault.proposeRun(ids, a, MEMO);
+        _proposeSigned(ids, a, MEMO);
     }
 
     function test_propose_length_mismatch_reverts() public {
         vm.prank(agent);
         vm.expectRevert(PayrollVault.LengthMismatch.selector);
-        vault.proposeRun(_ids(aliceId, bobId), _oneAmt(1), MEMO);
+        _proposeSigned(_ids(aliceId, bobId), _oneAmt(1), MEMO);
     }
 
     function test_propose_zero_amount_reverts() public {
         vm.prank(agent);
         vm.expectRevert(PayrollVault.ZeroAmount.selector);
-        vault.proposeRun(_ids(aliceId, bobId), _amts(1 * USD, 0), MEMO);
+        _proposeSigned(_ids(aliceId, bobId), _amts(1 * USD, 0), MEMO);
     }
 
     function test_propose_unconfirmed_payee_reverts() public {
         bytes32 ghost = keccak256("ghost");
         vm.prank(agent);
         vm.expectRevert(abi.encodeWithSelector(PayrollVault.PayeeNotConfirmed.selector, ghost));
-        vault.proposeRun(_one(ghost), _oneAmt(1 * USD), MEMO);
+        _proposeSigned(_one(ghost), _oneAmt(1 * USD), MEMO);
     }
 
     function test_propose_invited_but_unconfirmed_reverts() public {
@@ -318,20 +318,20 @@ contract PayrollVaultTest is Base {
         _invite(id);
         vm.prank(agent);
         vm.expectRevert(abi.encodeWithSelector(PayrollVault.PayeeNotConfirmed.selector, id));
-        vault.proposeRun(_one(id), _oneAmt(1 * USD), MEMO);
+        _proposeSigned(_one(id), _oneAmt(1 * USD), MEMO);
     }
 
     function test_propose_duplicate_payee_reverts() public {
         vm.prank(agent);
         vm.expectRevert(abi.encodeWithSelector(PayrollVault.DuplicatePayee.selector, aliceId));
-        vault.proposeRun(_ids(aliceId, aliceId), _amts(1 * USD, 1 * USD), MEMO);
+        _proposeSigned(_ids(aliceId, aliceId), _amts(1 * USD, 1 * USD), MEMO);
     }
 
     function test_propose_duplicate_run_reverts() public {
         bytes32 key = _propose(1 * USD, 1 * USD);
         vm.prank(agent);
         vm.expectRevert(abi.encodeWithSelector(PayrollVault.DuplicateRun.selector, key));
-        vault.proposeRun(_ids(aliceId, bobId), _amts(1 * USD, 1 * USD), MEMO);
+        _proposeSigned(_ids(aliceId, bobId), _amts(1 * USD, 1 * USD), MEMO);
     }
 
     function test_propose_cap_breaches_revert() public {
@@ -340,11 +340,11 @@ contract PayrollVaultTest is Base {
         vm.expectRevert(
             abi.encodeWithSelector(AgentSpendPolicy.PerPayeeCapExceeded.selector, aliceId, 1_000_000 * USD, 3_000 * USD)
         );
-        vault.proposeRun(_one(aliceId), _oneAmt(1_000_000 * USD), MEMO);
+        _proposeSigned(_one(aliceId), _oneAmt(1_000_000 * USD), MEMO);
         // total over perRun
         vm.prank(agent);
         vm.expectRevert(abi.encodeWithSelector(AgentSpendPolicy.PerRunCapExceeded.selector, 6_000 * USD, 5_000 * USD));
-        vault.proposeRun(_ids(aliceId, bobId), _amts(3_000 * USD, 3_000 * USD), MEMO);
+        _proposeSigned(_ids(aliceId, bobId), _amts(3_000 * USD, 3_000 * USD), MEMO);
     }
 
     function test_propose_when_paused_reverts() public {
@@ -352,7 +352,7 @@ contract PayrollVaultTest is Base {
         vault.pause();
         vm.prank(agent);
         vm.expectRevert(Pausable.EnforcedPause.selector);
-        vault.proposeRun(_one(aliceId), _oneAmt(1), MEMO);
+        _proposeSigned(_one(aliceId), _oneAmt(1), MEMO);
     }
 
     function test_propose_after_revoke_or_expiry_reverts() public {
@@ -360,14 +360,14 @@ contract PayrollVaultTest is Base {
         policy.revoke();
         vm.prank(agent);
         vm.expectRevert(AgentSpendPolicy.PolicyRevoked.selector);
-        vault.proposeRun(_one(aliceId), _oneAmt(1), MEMO);
+        _proposeSigned(_one(aliceId), _oneAmt(1), MEMO);
     }
 
     function test_propose_after_expiry_reverts() public {
         vm.warp(block.timestamp + 366 days);
         vm.prank(agent);
         vm.expectRevert(AgentSpendPolicy.PolicyExpired.selector);
-        vault.proposeRun(_one(aliceId), _oneAmt(1), MEMO);
+        _proposeSigned(_one(aliceId), _oneAmt(1), MEMO);
     }
 
     // ------------------------------------------------------------ approve / cancel / execute
@@ -444,7 +444,7 @@ contract PayrollVaultTest is Base {
         assertEq(uint8(vault.runStatus(k1)), uint8(PayrollVault.Status.Cancelled));
 
         vm.prank(agent);
-        bytes32 k2 = vault.proposeRun(_ids(aliceId, bobId), _amts(2 * USD, 2 * USD), MEMO);
+        bytes32 k2 = _proposeSigned(_ids(aliceId, bobId), _amts(2 * USD, 2 * USD), MEMO);
         vm.startPrank(employer);
         vault.approveRun(k2);
         vault.cancelRun(k2);
@@ -480,7 +480,7 @@ contract PayrollVaultTest is Base {
         vault.cancelRun(key);
         vm.warp(block.timestamp + 1 days);
         vm.prank(agent);
-        bytes32 again = vault.proposeRun(_ids(aliceId, bobId), _amts(1 * USD, 1 * USD), MEMO);
+        bytes32 again = _proposeSigned(_ids(aliceId, bobId), _amts(1 * USD, 1 * USD), MEMO);
         assertEq(again, key);
         assertEq(uint8(vault.runStatus(key)), uint8(PayrollVault.Status.Proposed));
         assertEq(vault.getRun(key).executableAt, uint64(block.timestamp) + vault.reviewWindow());
@@ -501,8 +501,10 @@ contract PayrollVaultTest is Base {
         vm.prank(employer);
         vault.executeRun(key);
         vm.prank(agent);
-        vm.expectRevert(abi.encodeWithSelector(PayrollVault.DuplicateRun.selector, key));
-        vault.proposeRun(_ids(aliceId, bobId), _amts(1 * USD, 1 * USD), MEMO);
+        // Every line of a paid run is marked paid, so the same signed lines are refused outright.
+        vm.expectRevert(abi.encodeWithSelector(PayrollVault.LineAlreadyPaid.selector, aliceId, MEMO));
+        _proposeSigned(_ids(aliceId, bobId), _amts(1 * USD, 1 * USD), MEMO);
+        assertEq(uint8(vault.runStatus(key)), uint8(PayrollVault.Status.Executed));
     }
 
     function test_pause_blocks_approve_execute_but_not_cancel() public {
@@ -552,7 +554,7 @@ contract PayrollVaultTest is Base {
         vault.executeRun(k1);
 
         vm.prank(agent);
-        bytes32 k2 = vault.proposeRun(_one(aliceId), _oneAmt(3_000 * USD), keccak256("m2"));
+        bytes32 k2 = _proposeSigned(_one(aliceId), _oneAmt(3_000 * USD), keccak256("m2"));
         vm.prank(employer);
         vault.approveRun(k2);
         vm.warp(block.timestamp + WINDOW);
@@ -561,11 +563,11 @@ contract PayrollVaultTest is Base {
 
         vm.prank(agent);
         vm.expectRevert(abi.encodeWithSelector(AgentSpendPolicy.PeriodCapExceeded.selector, 1 * USD, 0));
-        vault.proposeRun(_one(aliceId), _oneAmt(1 * USD), keccak256("m3"));
+        _proposeSigned(_one(aliceId), _oneAmt(1 * USD), keccak256("m3"));
 
         vm.warp(block.timestamp + 30 days); // window rolls over
         vm.prank(agent);
-        vault.proposeRun(_one(aliceId), _oneAmt(1 * USD), keccak256("m3"));
+        _proposeSigned(_one(aliceId), _oneAmt(1 * USD), keccak256("m3"));
         assertEq(policy.remainingInPeriod(), 8_000 * USD);
     }
 
