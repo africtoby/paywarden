@@ -6,6 +6,7 @@ import type { Config } from "./config.js";
 import { money } from "./money.js";
 import { parseLlm } from "./parse-llm.js";
 import { parseRules } from "./parse-rules.js";
+import { submitRunViaAccount } from "./smart-account.js";
 import { submitRun } from "./submit.js";
 import { signedSheetSchema, type Timesheet } from "./timesheet.js";
 import { validate, validateSigned, type PayeeRecord } from "./validate.js";
@@ -52,5 +53,15 @@ export async function runAgent(cfg: Config, timesheetPath: string, payeesPath: s
     wallet: (payeeId) => pub.readContract({ address: cfg.vault, abi: vaultAbi, functionName: "payeeWallet", args: [payeeId] }),
     verifyTypedData: (a) => pub.verifyTypedData(a),
   });
+  if (cfg.mode === "smart-account") {
+    // The agent key only signs the user operation; the relayer pays gas and is refunded from the account's deposit.
+    const relayerAccount = privateKeyToAccount(cfg.relayerKey!);
+    const relayer = createWalletClient({ chain, account: relayerAccount, transport: http() });
+    const outcome = await submitRunViaAccount(
+      { pub, relayer, relayerAccount, sessionKey: account, smartAccount: cfg.smartAccount!, vault: cfg.vault },
+      proposal,
+    );
+    return { proposal, outcome };
+  }
   return { proposal, outcome: await submitRun({ pub, wallet, account, vault: cfg.vault }, proposal) };
 }

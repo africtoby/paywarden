@@ -2,6 +2,7 @@
 
 import { ConnectPrompt } from "@/components/connect-prompt";
 import { useState } from "react";
+import { useBytecode } from "wagmi";
 import { AnimatePresence, motion } from "framer-motion";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { Sweep } from "@/components/sweep";
@@ -44,6 +45,10 @@ export default function AssistantPage() {
   const [busy, setBusy] = useState(false);
   const [confirmOff, setConfirmOff] = useState(false);
   const reduce = useReducedMotion();
+  // An assistant address with code is the employer's ERC-4337 smart account (AgentAccount): the AI's key is
+  // then only a session key on it, scoped to proposeRun on this vault.
+  const agentCode = useBytecode({ address: p?.agent, query: { enabled: !!p && p.agent !== zeroAddress } });
+  const isSmartAccount = !!agentCode.data && agentCode.data !== "0x";
 
   if (!v.isConnected) return <ConnectPrompt title={<>Connect your wallet to <em>manage your assistant.</em></>} copy="Set what your assistant may draft, and switch it off any time." />;
   if (v.loading)
@@ -140,6 +145,7 @@ export default function AssistantPage() {
               <dl className="mt-4 divide-y divide-border text-[14px]">
                 {([
                   ["Assistant", <a key="a" className="font-mono text-[13px] hover:underline" href={addressUrl(p.agent)} target="_blank" rel="noreferrer">{shortAddress(p.agent)}</a>],
+                  ...(isSmartAccount ? [["Account type", "ERC-4337 smart account (session key)"]] : []),
                   ["Per run", formatMoney(p.perRun)],
                   ["Per person", formatMoney(p.perPayee)],
                   ["Period", formatDuration(Number(p.period))],
