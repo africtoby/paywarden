@@ -26,8 +26,15 @@ describe("landing demo rules mirror the contract", () => {
     { name: "Kemi", wallet: kemi, amount: 450_000_000n },
   ];
 
-  it("passes all seven checks for an honest timesheet", () => {
+  it("refuses a line nobody signed with the signature error", () => {
+    const r = evaluateDraft([...honest, { name: "Juan", wallet: kemi, amount: 100_000_000n, signed: false }], policy);
+    expect(r.checks.filter((c) => !c.ok).map((c) => c.label)).toEqual(["Signed by each worker"]);
+    expect(r.refusal).toMatch(/not signed by the payee/);
+  });
+
+  it("passes all eight checks for an honest timesheet", () => {
     const r = evaluateDraft(honest, policy);
+    expect(r.checks).toHaveLength(8);
     expect(r.checks.every((c) => c.ok)).toBe(true);
     expect(r.refusal).toBeNull();
     expect(r.total).toBe(1_050_000_000n);
@@ -116,9 +123,10 @@ describe("run checks (live state)", () => {
   const policy = { agent: "0x0000000000000000000000000000000000000001" as const, perRun: 2_000_000_000n, perPayee: 800_000_000n, periodCap: 5_000_000_000n, period: 2_592_000n, expiry: 0n };
   const base = { amounts: [600_000_000n, 450_000_000n], total: 1_050_000_000n, status: "Proposed" as const, confirmedCount: 2, payeeCount: 2, policy, revoked: false, paused: false, remaining: 4_000_000_000n, now: 1_000 };
 
-  it("passes seven of seven for an honest run", () => {
+  it("passes eight of eight for an honest run", () => {
     const r = checkRun(base);
-    expect(r.checks).toHaveLength(7);
+    expect(r.checks).toHaveLength(8);
+    expect(r.checks[7]!.label).toBe("Signed by each worker");
     expect(r.checks.every((c) => c.ok)).toBe(true);
     expect(r.refusal).toBeNull();
   });
@@ -131,7 +139,7 @@ describe("run checks (live state)", () => {
     expect(checkRun({ ...base, paused: true }).refusal).toMatch(/paused/);
     expect(checkRun({ ...base, revoked: true }).refusal).toMatch(/turned off/);
   });
-  it("treats a paid run as 7/7", () => {
+  it("treats a paid run as 8/8", () => {
     expect(checkRun({ ...base, status: "Executed", paused: true }).checks.every((c) => c.ok)).toBe(true);
   });
 });

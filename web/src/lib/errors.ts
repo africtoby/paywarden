@@ -20,6 +20,11 @@ export const MESSAGES: Record<string, (a: Args) => string> = {
   AlreadyConfirmed: () => "This payee has already confirmed.",
   WalletAlreadyBound: () => "This wallet is already linked to another payee. Use a different wallet.",
   UnexpectedWallet: (a) => `This invite is for a different wallet (${String(a[0]).slice(0, 6)}…${String(a[0]).slice(-4)}). Connect that wallet to confirm.`,
+  InvalidWorkerSignature: () => "This pay line was not signed by the payee's wallet, so the contract will not pay it. Ask them to sign their hours on their hours page.",
+  LineAlreadyPaid: () => "This person was already paid for this period, so they cannot be paid again for it.",
+  // Raised only by the EIP-712 name setup inside the contract; the name is a short constant, so users never see these.
+  InvalidShortString: () => "Something went wrong. Try again.",
+  StringTooLong: () => "Something went wrong. Try again.",
   DuplicateRun: () => "This exact run was already drafted, so it will not be paid twice.",
   UnknownRun: () => "That run does not exist.",
   RunNotProposed: () => "This run is no longer waiting for approval.",

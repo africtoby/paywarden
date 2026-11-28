@@ -103,7 +103,7 @@ export default function Landing() {
               Try to trick it. <em className="font-light text-[var(--gold)]">The contract won&apos;t budge.</em>
             </RevealHeading>
             <p className="max-w-md text-[16px] text-[var(--mist)]/70 lg:justify-self-end">
-              Seven rules live on-chain: confirmed payees, per-person, per-run and monthly caps, expiry, pause and no double pay. Even a fooled assistant can&apos;t get past them.
+              Eight rules live on-chain: confirmed payees, per-person, per-run and monthly caps, expiry, pause, no double pay and a signature from each worker. Even a fooled assistant can&apos;t get past them.
             </p>
           </div>
           <div className="mt-12">

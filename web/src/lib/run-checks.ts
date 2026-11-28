@@ -21,8 +21,8 @@ export type RunCheckInput = {
 };
 
 /**
- * The seven checks the contract enforces, evaluated against live state.
- * A run that is already paid passed them all when it was signed, so it shows 7/7.
+ * The eight checks the contract enforces, evaluated against live state.
+ * A run that is already paid passed them all when it was signed, so it shows 8/8.
  * `refusal` is the plain-English reason for the first failing check, in the order the contract reverts.
  */
 export function checkRun(r: RunCheckInput): { checks: RunCheck[]; refusal: string | null } {
@@ -40,6 +40,8 @@ export function checkRun(r: RunCheckInput): { checks: RunCheck[]; refusal: strin
     r.total <= left,
     !expired,
     !r.paused,
+    true,
+    // A run that exists on-chain already passed the contract's worker-signature check.
     true,
   ];
   const checks = CHECK_LABELS.map((label, i) => ({ label, ok: oks[i] }));

@@ -5,7 +5,7 @@ import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion
 
 const STEPS = [
   ["06:42", "Drafted", "Your assistant prepares the run from the timesheet."],
-  ["06:43", "Checked 7/7", "The contract confirms every rule before anyone can sign."],
+  ["06:43", "Checked 8/8", "The contract confirms every rule before anyone can sign."],
   ["07:58", "Signed", "You approve once the review window has passed."],
   ["07:58", "Paid", "tUSD8 lands in each confirmed wallet in the same block."],
 ] as const;

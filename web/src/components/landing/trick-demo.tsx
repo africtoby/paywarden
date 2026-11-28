@@ -39,7 +39,7 @@ export function TrickDemo() {
   const lines = useMemo(() => (sheet === "honest" ? HONEST : [...HONEST, POISON]), [sheet]);
   const result = useMemo(() => evaluateDraft(lines, POLICY), [lines]);
   const refused = result.refusal !== null;
-  const lastCheckDelay = reduce ? 0 : 0.35 + 7 * 0.12;
+  const lastCheckDelay = reduce ? 0 : 0.35 + 8 * 0.12;
 
   // When the verdict lands, send a ripple out from the verdict card.
   const ripple = useRef<RippleHandle>(null);
@@ -161,7 +161,7 @@ export function TrickDemo() {
                   {refused ? "Refused by the contract" : "Ready for your signature"}
                 </p>
                 <p className="mt-1 text-[14px] text-[var(--mist)]/80">
-                  {refused ? `${result.refusal} No money moved.` : `All seven checks passed. ${formatMoney(result.total)} waits for you to sign.`}
+                  {refused ? `${result.refusal} No money moved.` : `All eight checks passed. ${formatMoney(result.total)} waits for you to sign.`}
                 </p>
               </motion.div>
             </motion.div>

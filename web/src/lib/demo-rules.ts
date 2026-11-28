@@ -5,7 +5,8 @@ import { MESSAGES } from "./errors";
  * Used only by the landing-page demo; the real app reads the contract.
  */
 
-export type DemoLine = { name: string; wallet: string; amount: bigint };
+/** `signed` is false only for a line nobody signed; undefined means the worker signed it. */
+export type DemoLine = { name: string; wallet: string; amount: bigint; signed?: boolean };
 
 export type DemoPolicy = {
   confirmed: ReadonlySet<string>; // lower-case wallet addresses that confirmed their invite
@@ -34,12 +35,14 @@ export const CHECK_LABELS = [
   "Assistant not expired",
   "Vault not paused",
   "Not already paid",
+  "Signed by each worker",
 ] as const;
 
 export function evaluateDraft(lines: readonly DemoLine[], p: DemoPolicy): DemoResult {
   const total = lines.reduce((s, l) => s + l.amount, 0n);
   const unconfirmed = lines.find((l) => !p.confirmed.has(l.wallet.toLowerCase()));
   const overPerson = lines.find((l) => l.amount > p.perPayee);
+  const unsigned = lines.find((l) => l.signed === false);
 
   const oks = [
     !unconfirmed,
@@ -49,12 +52,14 @@ export function evaluateDraft(lines: readonly DemoLine[], p: DemoPolicy): DemoRe
     !p.expired,
     !p.paused,
     !p.alreadyPaid,
+    !unsigned,
   ];
   const checks = CHECK_LABELS.map((label, i) => ({ label, ok: oks[i] }));
 
   // Same order the contract reverts in: the first failing rule wins.
   let refusal: string | null = null;
   if (unconfirmed) refusal = MESSAGES.PayeeNotConfirmed([]);
+  else if (unsigned) refusal = MESSAGES.InvalidWorkerSignature([]);
   else if (overPerson) refusal = MESSAGES.PerPayeeCapExceeded([0n, overPerson.amount, p.perPayee]);
   else if (total > p.perRun) refusal = MESSAGES.PerRunCapExceeded([total, p.perRun]);
   else if (total > p.periodLeft) refusal = MESSAGES.PeriodCapExceeded([total, p.periodLeft]);

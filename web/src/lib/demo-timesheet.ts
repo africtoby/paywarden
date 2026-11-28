@@ -7,7 +7,10 @@ import type { DemoLine } from "./demo-rules";
  * assistant, decides what gets paid.
  */
 
-export type SheetLine = DemoLine & { source: "row" | "injected" };
+export type SheetLine = DemoLine & { source: "row" | "injected"; signed: boolean };
+
+/** Marks a row the worker never signed (the "Add a line nobody signed" trick). Rows typed by hand count as signed. */
+export const UNSIGNED_MARK = "[unsigned]";
 export type ParsedSheet = { lines: SheetLine[]; skipped: string[] };
 
 /** Decimal text ("12.50", "$1,000") to integer units with `dp` decimals, without floating point. */
@@ -36,13 +39,15 @@ export function parseDemoSheet(text: string, roster: Readonly<Record<string, str
       const amount = toUnits(inj[2]!);
       if (amount !== null) {
         const wallet = inj[1]!.toLowerCase();
-        lines.push({ name: `Wallet ${inj[1]}`, wallet, amount, source: "injected" });
+        lines.push({ name: `Wallet ${inj[1]}`, wallet, amount, source: "injected", signed: true });
         continue;
       }
     }
     if (line.startsWith("#") || /^name\s*,/i.test(line)) continue;
 
-    const parts = line.split(",").map((s) => s.trim());
+    const signed = !line.toLowerCase().endsWith(UNSIGNED_MARK);
+    const row = signed ? line : line.slice(0, -UNSIGNED_MARK.length);
+    const parts = row.split(",").map((s) => s.trim());
     const hours = parts.length === 3 ? toUnits(parts[1]!, 2) : null;
     const rate = parts.length === 3 ? toUnits(parts[2]!, 6) : null;
     if (hours === null || rate === null || !parts[0]) {
@@ -51,7 +56,7 @@ export function parseDemoSheet(text: string, roster: Readonly<Record<string, str
     }
     const name = parts[0];
     const wallet = roster[name.toLowerCase()] ?? `unknown:${name.toLowerCase()}`;
-    lines.push({ name, wallet, amount: (hours * rate) / 100n, source: "row" });
+    lines.push({ name, wallet, amount: (hours * rate) / 100n, source: "row", signed });
   }
   return { lines, skipped };
 }

@@ -51,6 +51,18 @@ describe("try-it timesheet reader", () => {
     expect(r.checks[1]).toEqual({ label: "Per-person cap", ok: false });
   });
 
+  it("treats typed rows as signed and an [unsigned] row as unsigned, which the checks refuse", () => {
+    const honest = parseDemoSheet(HONEST, ROSTER).lines;
+    expect(honest.every((l) => l.signed)).toBe(true);
+    const { lines } = parseDemoSheet(`${HONEST}\nKemi Adeyemi, 5, $15.00 [unsigned]`, ROSTER);
+    const extra = lines[3]!;
+    expect(extra.signed).toBe(false);
+    expect(extra.amount).toBe(75_000_000n);
+    expect(extra.wallet).toBe("0xkemi");
+    const r = evaluateDraft(lines, POLICY);
+    expect(r.checks.filter((c) => !c.ok).map((c) => c.label)).toEqual(["Signed by each worker"]);
+  });
+
   it("skips lines it cannot read", () => {
     const { lines, skipped } = parseDemoSheet("Ada Okonkwo, forty, 15\nhello", ROSTER);
     expect(lines).toEqual([]);

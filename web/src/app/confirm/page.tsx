@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { WalletButton } from "@/components/wallet-button";
 import { isAddress, isHex, zeroAddress, type Address, type Hex } from "viem";
 import { useAccount, useReadContract } from "wagmi";
@@ -94,6 +95,12 @@ export default function ConfirmPage() {
                 <a href={txUrl(done)} target="_blank" rel="noreferrer" className="font-mono text-[12px] text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
                   {shortHash(done)}
                 </a>
+                <Link
+                  href={`/hours#${new URLSearchParams({ vault: invite.vault, name: invite.name, salt: invite.salt }).toString()}`}
+                  className="mt-2 rounded-full border border-border px-5 py-2.5 text-[15px] transition-colors hover:bg-[var(--ink)]/5 focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                  Enter your hours
+                </Link>
               </div>
             ) : (
               <>

@@ -368,6 +368,9 @@ export default function RunsPage() {
                             <span className="font-mono text-[12px] text-[var(--sage)]" title="Wallet that will be paid">
                               {wallets.get(id) ? shortAddress(wallets.get(id)!) : "No wallet"}
                             </span>
+                            <span className="rounded-full bg-[#7fbf9a]/12 px-2.5 py-0.5 font-mono text-[12px] uppercase text-[#7fbf9a]" title="The contract verified this worker's signature on their line">
+                              Signed
+                            </span>
                             <span className="tnum font-serif text-[16px]">{formatMoney(r.amounts[i])}</span>
                           </li>
                         ))}
