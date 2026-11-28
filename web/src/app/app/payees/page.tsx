@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { Check, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { isAddress, isHex, type Address, type Hex } from "viem";

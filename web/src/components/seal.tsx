@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 // Guilloche maths adapted from design/directions.html (our own design file).
 

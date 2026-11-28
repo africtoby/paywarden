@@ -2,7 +2,8 @@
 
 import { ConnectPrompt } from "@/components/connect-prompt";
 import { useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { Sweep } from "@/components/sweep";
 import { isAddress, zeroAddress, type Address } from "viem";
 import { AllowanceMeter } from "@/components/allowance-meter";

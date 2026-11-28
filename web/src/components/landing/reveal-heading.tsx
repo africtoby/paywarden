@@ -1,7 +1,7 @@
 "use client";
 
 import { Children, cloneElement, isValidElement, useEffect, useLayoutEffect, useRef, useState, type ElementType, type ReactNode } from "react";
-import { useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 const LINE_STAGGER = 0.06; // seconds between lines
 

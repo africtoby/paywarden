@@ -9,3 +9,11 @@ evm_version = "shanghai"
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
 
 remappings = ["@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/"]
+
+[fuzz]
+runs = 10000
+
+[invariant]
+runs = 512
+depth = 64
+fail_on_revert = false

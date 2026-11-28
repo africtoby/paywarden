@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { PaidCelebration } from "@/components/paid-celebration";
 import { Seal } from "@/components/seal";
 import { SignatureMark } from "@/components/signature-mark";
