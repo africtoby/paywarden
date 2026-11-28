@@ -39,10 +39,10 @@ The core contracts stay open source. The business is in the hosting, the integra
 
 | When | What |
 | --- | --- |
-| **Done (hackathon)** | Vault, factory, spend policy and identity registry on Aevum testnet, verified. Wallet-bound invites against front-running. Worker-signed pay lines (EIP-712): the assistant can only propose lines the payee signed, and a signed line is paid once. Re-proposing a cancelled run. Agent with an LLM or plain parser, retries and idempotency. Web app with review-and-sign, an activity log and a backup of invites. CI on every push. |
+| **Done (hackathon)** | Vault, factory, spend policy and identity registry on Aevum testnet, verified. Wallet-bound invites against front-running. Worker-signed pay lines (EIP-712): the assistant can only propose lines the payee signed, and a signed line is paid once. Re-proposing a cancelled run. ERC-4337: the assistant can act through the employer's smart account with a session key limited to `proposeRun` on one vault. Agent with an LLM or plain parser, retries and idempotency. Web app with review-and-sign, an activity log and a backup of invites. CI on every push. |
 | **Dec 2026 to Jan 2027** | Recurring paydays (the agent drafts on a schedule; the owner still signs). CSV and accounting export. Several approvers (2-of-3 sign-off). Hosted live demo. |
 | **Feb 2027: QDay mainnet** | External security review. Mainnet deployment with real stablecoins. Use QDay's own ERC-8004 identity registry if they publish one. |
-| **Q2 2027** | ERC-4337 smart accounts: the assistant gets a scoped session key with the same caps, and a paymaster sponsors gas so payees never need gas to confirm. The `AgentSpendPolicy` already works like a scoped session key (one key, hard caps, expiry, instant revoke); 4337 makes it native. |
+| **Q2 2027** | A paymaster that sponsors gas (so payees never need gas to confirm and the assistant's account needs no deposit), and a public bundler once one runs on Aevum. The ERC-4337 smart account with a scoped session key is already done. |
 | **Q3 2027** | Integrations: timesheet tools (Harvest, Toggl, Google Sheets), Slack approval notifications, and multi-currency stablecoin support. |
 
 ## Known limits today

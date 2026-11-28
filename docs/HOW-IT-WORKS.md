@@ -34,10 +34,13 @@ The caps are checked again at payment time, so the limits cannot be dodged by wa
 | `PayrollVault` | Holds the employer's tUSD8, the payee list and the runs. Owner-only approve, cancel, pay, pause and withdraw. |
 | `AgentSpendPolicy` | The assistant's permission: its address, per-run, per-person and period caps, an expiry, and an off switch. |
 | `IdentityRegistry` | ERC-8004 style registry. A payee's confirmed wallet is registered here. |
+| `AgentAccount` (optional) | ERC-4337 smart account (EntryPoint v0.7) owned by the employer. Set as the assistant, it lets the AI's key act only as a session key: it can sign `proposeRun` on one vault until an expiry, and nothing else. Created by `AgentAccountFactory`. |
 
 **Confirmation of payee.** You invite someone by a hash of their name and a secret salt. You also give their wallet address, so only that wallet can accept the invite, even if someone copies the secret. They open the invite link and confirm from that wallet. From then on, that wallet is the only place their pay can go. A typo in an address, or an attacker's address slipped into a timesheet, has nowhere to land.
 
 **Worker-signed pay lines.** Once confirmed, the payee signs what they are owed: a typed message with their payee id, the amount and the memo (the period). The vault checks the signature against the confirmed wallet, for ordinary wallets and smart-contract wallets alike. So the assistant cannot invent a line, inflate hours or add a payee, and a signed line is paid once.
+
+**A session key instead of a wallet (ERC-4337).** The assistant can also work through the employer's smart account. Its key then signs a user operation rather than a transaction, and the account accepts that signature for exactly one call: `proposeRun` on the employer's vault, with no value, before the expiry. Approving, paying, withdrawing or changing its own permissions all fail validation at the EntryPoint (`AA24`), and after the expiry the EntryPoint itself refuses (`AA22`). Gas is paid from the account's EntryPoint deposit, so the assistant's key holds no money and no gas at all. The spend policy's caps still apply on top.
 
 Money is tUSD8, a test dollar with 6 decimals, so the app shows it in dollars.
 

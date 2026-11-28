@@ -1,0 +1,23 @@
+{
+  "network": "QDay Aevum testnet (44005)",
+  "entryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+  "accountFactory": "0x9F59524dD9002e4A96FAFdd11C0F1A9A7b5809a5",
+  "vault": "0x40C5B22D637384A992c0dcFBf9d3Ee24E4bB53AA",
+  "policy": "0x6377f2B20B71cd42dcA3323380166543684Da467",
+  "smartAccount": "0x641313e4B3b48D5a6Cdf388e6c30Fe6aD1540212",
+  "sessionKey": "0x715295AD184D379E00537886E24D1CF3dC0906FF",
+  "sessionKeyBalance": "0",
+  "transactions": {
+    "Create vault": "0xddefb9d7ae8a03e117e07e434e7681158f4e2bd08a549dac24815c8258dfd67a",
+    "Create the employer's smart account": "0x675091a21385ae6a563c961fe8e30327dae35bc82cedae379ab747cd6a9e2080",
+    "Deposit gas at the EntryPoint": "0x789dee1debb3ddfae6ad8f1748503d0bdecd833eee48a476ec5a51bb9b94d27f",
+    "Give the assistant a session key (proposeRun only, 7 days)": "0x9c0e35f4e0d64186204d7b91418628bcfda8b3d7811e070699cd69fe55274270",
+    "Set the smart account as the assistant, with limits": "0xbdf4372e4a3bc74f72e0610b479895c8863361366277ff5c7f5fec196c6565cf",
+    "Invite Ada, bound to her wallet": "0x8f767d0e2a4069deb2416b463ca981d52dc5f42098c6504a5d12ba6e5e536486",
+    "Ada confirms from her own wallet": "0xa0f1abeff55a0d174c8b41650fc87f7dbe135d49b1bf72a07598a2c792cd7878",
+    "Assistant proposes Ada's signed $0.50 line through the smart account (handleOps)": "0x6e6b75c5f278f4dd4e52cc1912754c525cdd0f850818d3159f54fd312f297329",
+    "REFUSED session key tries approveRun (AA24 signature error)": "0xddf3f10eeba0df23aa63d5ef12df0857f49e90e224e33679fbe481709fae2604",
+    "Owner revokes the session key": "0x4d7e7f19bf6c9caa966ad2e15ab6d8f354a658c9f7a9b1d7b0c0d7237d64d7ed",
+    "REFUSED revoked session key tries to propose (EntryPointAA24)": "0xb04a9eb2d05609ee6927895eba5eb38228aa5800c7ec62ff42fab32b9a0dc50a"
+  }
+}

@@ -18,7 +18,7 @@ The idea: the worker signs the hours, the AI drafts, you sign the pay. Three peo
 
 - **Worker-signed pay lines.** Each payee signs their own line (payee, amount, memo) with the wallet they confirmed. It is an EIP-712 signature, so it costs no gas. `proposeRun` takes the signatures and the vault checks every one against the confirmed wallet, for ordinary wallets and for smart-contract wallets (ERC-1271). The assistant cannot invent a line, inflate hours or add a payee, because it cannot produce the signature. A signed line can be paid once (`LineAlreadyPaid`). Code: [PayrollVault.sol](../contracts/src/PayrollVault.sol), tests: [WorkerSignatures.t.sol](../contracts/test/WorkerSignatures.t.sol).
 - **Wallet-bound invites.** The employer gives the payee's wallet when inviting, so only that wallet can confirm. A second wallet that copied the secret from a pending transaction is refused with `UnexpectedWallet`. See the refusal in the [on-chain proof](../README.md#on-chain-proof).
-- **The assistant can only propose.** A separate spend policy holds its caps, expiry and off switch. This is the shape of a scoped session key, enforced by the contract.
+- **The assistant can only propose, twice over.** A spend policy holds its caps, expiry and off switch. And with ERC-4337, the assistant's key is a session key on the employer's smart account that can sign nothing but `proposeRun` on one vault, until an expiry the EntryPoint enforces. Code: [AgentAccount.sol](../contracts/src/AgentAccount.sol), tests: [AgentAccount.t.sol](../contracts/test/AgentAccount.t.sol), proof: [README](../README.md#on-chain-proof).
 - **ERC-8004 style identity** for each confirmed payee and for the assistant.
 
 ## UX and presentation (15)
@@ -33,15 +33,15 @@ The idea: the worker signs the hours, the AI drafts, you sign the pay. Three peo
 
 | What | Evidence |
 | --- | --- |
-| Contract tests | 95 Foundry tests: unit, fuzz, invariant, every revert path. 95.7% line coverage overall, 100% line coverage on all four source files. |
-| Fuzz | 10,000 runs per fuzz test, 40,000 fuzz cases in total (`contracts/foundry.toml`). |
+| Contract tests | 118 Foundry tests: unit, fuzz, invariant, ERC-4337, every revert path. 95.1% line coverage overall, 100% on the four payroll contracts and 98% on the smart account. |
+| Fuzz | 10,000 runs per fuzz test (`contracts/foundry.toml`), on caps, signatures, amounts and the session key's call filter. |
 | Invariants | 4 invariants x 512 runs x 64 calls each, including "a signed line is paid at most once". |
-| Agent | 35 tests (unit plus an integration test that deploys the real contracts on a local chain). |
+| Agent | 41 tests (unit, plus local-chain tests that deploy the real contracts and the canonical EntryPoint v0.7). |
 | Web unit | 38 tests (vitest), including that every contract error has a plain-English message. |
 | End to end | 17 Playwright tests at two screen sizes, 34 runs. |
 | CI | [GitHub Actions](https://github.com/africtoby/paywarden/actions/workflows/ci.yml): contracts, agent, web and end-to-end jobs on every push. |
 | Verified contracts | Factory, vault, policy and registry are verified on the Aevum explorer. Each address is listed with the commit it was built from in [Deployments](../README.md#deployments). |
-| Platform use | Aevum testnet for all settlement, tUSD8 (6 decimals) as the pay currency, tQDAY (18 decimals) for gas, an ERC-8004 identity registry, and a spend policy that works like a scoped key. Details in [How it uses the QDay platform](../README.md#how-it-uses-the-qday-platform). |
+| Platform use | Aevum testnet for all settlement, tUSD8 (6 decimals) as the pay currency, tQDAY (18 decimals) for gas, an ERC-8004 identity registry, a spend policy, and ERC-4337: an employer-owned smart account on the canonical EntryPoint v0.7 with a scoped session key for the assistant ([factory, verified](https://explorer-test.qday.info/address/0x9F59524dD9002e4A96FAFdd11C0F1A9A7b5809a5)). Details in [How it uses the QDay platform](../README.md#how-it-uses-the-qday-platform). |
 | Agent design | An LLM reads a free-form timesheet; plain code validates and simulates; a no-LLM mode exists; retries with backoff; waits for receipts. The contract is the final judge. |
 
 ## Real-world utility (15)
@@ -86,6 +86,6 @@ The video was recorded before workers signed their lines. The worker-signature f
 - The worker's signing step needs the worker to open a link and sign once. It adds a step to payday in exchange for removing the assistant's power to invent a line.
 - If one transfer in a run fails, the whole run reverts and nobody in it is paid, so one bad payee blocks the run until it is fixed.
 - Invite names and salts live in the employer's browser. There is a backup and restore button but no server copy.
-- No ERC-4337 smart accounts or paymaster yet. The spend policy behaves like a scoped session key but is not one natively.
+- No paymaster: the smart account pays its own gas from its EntryPoint deposit, which a compromised session key could spend (it still cannot do anything but propose). No public bundler is listed for Aevum, so the agent submits `handleOps` itself.
 - The identity registry is a reference implementation. We will switch to QDay's if one is published.
 - The attack test is our own. It shows the contract refuses what we thought of, not that nothing else exists.
