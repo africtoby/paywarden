@@ -2,7 +2,7 @@ import { parseAbi } from "viem";
 
 // Minimal slice of PayrollVault + AgentSpendPolicy. The error lines let viem name a revert.
 export const vaultAbi = parseAbi([
-  "function proposeRun(bytes32[] payeeIds, uint256[] amounts, bytes32 memoHash) returns (bytes32 runKey)",
+  "function proposeRun(bytes32[] payeeIds, uint256[] amounts, bytes32 memoHash, bytes[] signatures) returns (bytes32 runKey)",
   "function payeeWallet(bytes32 payeeId) view returns (address)",
   "function runStatus(bytes32 runKey) view returns (uint8)",
   "function commitmentOf(string name, bytes32 salt) pure returns (bytes32)",
@@ -16,6 +16,8 @@ export const vaultAbi = parseAbi([
   "error DuplicatePayee(bytes32 payeeId)",
   "error PayeeNotConfirmed(bytes32 payeeId)",
   "error DuplicateRun(bytes32 runKey)",
+  "error InvalidWorkerSignature(bytes32 payeeId)",
+  "error LineAlreadyPaid(bytes32 payeeId, bytes32 memoHash)",
   // policy (bubbles up through checkRun)
   "error NotAgent()",
   "error PolicyRevoked()",

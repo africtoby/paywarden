@@ -1,7 +1,7 @@
 import type { Account, Address, Hex, PublicClient, WalletClient } from "viem";
 import { vaultAbi } from "./abi.js";
 import { explain, isRetryable } from "./errors.js";
-import type { Proposal } from "./validate.js";
+import type { SignedProposal } from "./validate.js";
 
 export async function withRetry<T>(fn: () => Promise<T>, tries = 4, baseMs = 500): Promise<T> {
   for (let i = 0; ; i++) {
@@ -25,9 +25,10 @@ export type Outcome =
  */
 export async function submitRun(
   deps: { pub: PublicClient; wallet: WalletClient; account: Account; vault: Address; baseMs?: number },
-  p: Proposal,
+  p: SignedProposal,
 ): Promise<Outcome> {
-  const args = [p.payeeIds, p.amounts, p.memoHash] as const;
+  const args = [p.payeeIds, p.amounts, p.memoHash, p.signatures] as const;
+  const lines = p.lines.map((l, i) => ({ payeeId: p.payeeIds[i]!, name: l.name, amount: l.amount }));
   try {
     const { request } = await withRetry(
       () =>
@@ -48,7 +49,7 @@ export async function submitRun(
     }
     return { status: "proposed", txHash };
   } catch (e) {
-    const x = explain(e);
+    const x = explain(e, lines);
     if (x.name === "DuplicateRun") return { status: "already-proposed" };
     if (x.name !== "Unknown") return { status: "refused", errorName: x.name, message: x.message };
     throw e;

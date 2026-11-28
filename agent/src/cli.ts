@@ -4,7 +4,7 @@ import { runAgent } from "./run.js";
 
 const [timesheet, payees = "payees.json"] = process.argv.slice(2);
 if (!timesheet) {
-  console.error("Usage: npm run propose -- <timesheet.txt> [payees.json]");
+  console.error("Usage: npm run propose -- <signed-timesheet.json> [payees.json]");
   process.exit(1);
 }
 try {

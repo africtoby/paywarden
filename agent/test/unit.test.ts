@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { parseRules } from "../src/parse-rules.js";
 import { parseLlm } from "../src/parse-llm.js";
 import { parseTimesheet } from "../src/run.js";
-import { toUnits, validate, payeeIdOf } from "../src/validate.js";
+import { BaseError, ContractFunctionRevertedError, keccak256, stringToHex, verifyTypedData, zeroAddress } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { toUnits, validate, validateSigned, payeeIdOf, payLineTypedData } from "../src/validate.js";
 import { withRetry } from "../src/submit.js";
-import { isRetryable } from "../src/errors.js";
+import { explain, isRetryable } from "../src/errors.js";
 import { money } from "../src/money.js";
 
 const salt = `0x${"11".repeat(32)}` as const;
@@ -66,6 +68,87 @@ describe("validate", () => {
     expect(() => validate(sheet([{ name: "Ada Lovelace", hours: "0", rate: "1" }]), payees)).toThrow(/zero/);
     expect(() => validate(sheet([{ name: "Ada Lovelace", hours: "9999", rate: "1" }]), payees)).toThrow(/limit/);
     expect(() => validate(sheet([{ name: "Ada Lovelace", hours: "1", rate: "99999" }]), payees)).toThrow(/rate/);
+  });
+});
+
+describe("validateSigned (worker-signed lines)", () => {
+  const vault = "0x00000000000000000000000000000000000000aa" as const;
+  const chainId = 31337;
+  const ada = privateKeyToAccount("0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdd6e7dc");
+  const grace = privateKeyToAccount("0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6");
+  const mallory = privateKeyToAccount("0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a");
+  const memoHash = keccak256(stringToHex("Week 48"));
+  const adaId = payeeIdOf("Ada Lovelace", salt);
+  const graceId = payeeIdOf("Grace Hopper", salt);
+  const confirmed = new Map<string, `0x${string}`>([[adaId, ada.address]]); // Grace never confirmed
+
+  const ctx = (wallets = confirmed) => ({
+    vault,
+    chainId,
+    wallet: async (id: `0x${string}`) => wallets.get(id) ?? zeroAddress,
+    verifyTypedData: (a: Parameters<typeof verifyTypedData>[0]) => verifyTypedData(a),
+  });
+  const sign = (who: typeof ada, id: `0x${string}`, amount: bigint) =>
+    who.signTypedData(payLineTypedData(vault, chainId, id, amount, memoHash));
+  const sheet = (lines: { name: string; amount: string; signature?: string }[]) => ({ memo: "Week 48", lines });
+
+  it("accepts a line signed by the confirmed wallet and returns the signature", async () => {
+    const signature = await sign(ada, adaId, 500_000n);
+    const p = await validateSigned(sheet([{ name: "Ada Lovelace", amount: "0.50", signature }]), payees, ctx());
+    expect(p.amounts).toEqual([500_000n]);
+    expect(p.signatures).toEqual([signature]);
+    expect(p.payeeIds).toEqual([adaId]);
+  });
+  it("refuses an unsigned line and names the person", async () => {
+    await expect(validateSigned(sheet([{ name: "Ada Lovelace", amount: "0.50" }]), payees, ctx())).rejects.toThrow(/Ada Lovelace's line is not signed/);
+  });
+  it("refuses an empty signature and a non-hex one", async () => {
+    await expect(validateSigned(sheet([{ name: "Ada Lovelace", amount: "0.50", signature: "" }]), payees, ctx())).rejects.toThrow(/not signed/);
+    await expect(validateSigned(sheet([{ name: "Ada Lovelace", amount: "0.50", signature: "nope" }]), payees, ctx())).rejects.toThrow(/Ada Lovelace's signature is not a valid/);
+    await expect(validateSigned(sheet([{ name: "Ada Lovelace", amount: "0.50", signature: "0xdead" }]), payees, ctx())).rejects.toThrow(/Ada Lovelace's signature does not match/);
+  });
+  it("refuses a tampered amount", async () => {
+    const signature = await sign(ada, adaId, 500_000n); // signed $0.50
+    await expect(validateSigned(sheet([{ name: "Ada Lovelace", amount: "5.00", signature }]), payees, ctx())).rejects.toThrow(/Ada Lovelace's signature does not match/);
+  });
+  it("refuses a signature from someone else's wallet", async () => {
+    const signature = await sign(mallory, adaId, 500_000n);
+    await expect(validateSigned(sheet([{ name: "Ada Lovelace", amount: "0.50", signature }]), payees, ctx())).rejects.toThrow(/Ada Lovelace's signature does not match/);
+  });
+  it("refuses Ada's signature reused on Grace's line", async () => {
+    const wallets = new Map(confirmed).set(graceId, grace.address);
+    const signature = await sign(ada, adaId, 500_000n);
+    await expect(validateSigned(sheet([{ name: "Grace Hopper", amount: "0.50", signature }]), payees, ctx(wallets))).rejects.toThrow(/Grace Hopper's signature does not match/);
+  });
+  it("refuses a payee who has not confirmed a wallet, an unknown name, a duplicate and a zero amount", async () => {
+    const g = await sign(grace, graceId, 500_000n);
+    await expect(validateSigned(sheet([{ name: "Grace Hopper", amount: "0.50", signature: g }]), payees, ctx())).rejects.toThrow(/Grace Hopper has not confirmed/);
+    await expect(validateSigned(sheet([{ name: "Mallory", amount: "1", signature: "0x00" }]), payees, ctx())).rejects.toThrow(/not in your payee list/);
+    const signature = await sign(ada, adaId, 500_000n);
+    const line = { name: "Ada Lovelace", amount: "0.50", signature };
+    await expect(validateSigned(sheet([line, line]), payees, ctx())).rejects.toThrow(/twice/);
+    await expect(validateSigned(sheet([{ ...line, amount: "0" }]), payees, ctx())).rejects.toThrow(/zero amount/);
+  });
+  it("refuses a signature made for another vault or chain", async () => {
+    const other = await ada.signTypedData(payLineTypedData("0x00000000000000000000000000000000000000bb", chainId, adaId, 500_000n, memoHash));
+    await expect(validateSigned(sheet([{ name: "Ada Lovelace", amount: "0.50", signature: other }]), payees, ctx())).rejects.toThrow(/does not match/);
+    const wrongChain = await ada.signTypedData(payLineTypedData(vault, 1, adaId, 500_000n, memoHash));
+    await expect(validateSigned(sheet([{ name: "Ada Lovelace", amount: "0.50", signature: wrongChain }]), payees, ctx())).rejects.toThrow(/does not match/);
+  });
+});
+
+describe("plain-English signature errors", () => {
+  const lines = [{ payeeId: "0xabc", name: "Ada", amount: 500_000n }];
+  const revert = (errorName: string, args: unknown[]) => {
+    const inner = Object.assign(Object.create(ContractFunctionRevertedError.prototype), { data: { errorName, args } });
+    return Object.assign(Object.create(BaseError.prototype), { walk: () => inner });
+  };
+  it("names the person and the dollar amount", () => {
+    expect(explain(revert("InvalidWorkerSignature", ["0xabc"]), lines).message).toBe("Ada's $0.50 line is not signed by the wallet that person confirmed.");
+    expect(explain(revert("LineAlreadyPaid", ["0xabc", "0x01"]), lines).message).toContain("Ada's $0.50 line was already paid");
+  });
+  it("falls back to the short payee id when the line is unknown", () => {
+    expect(explain(revert("InvalidWorkerSignature", ["0x1234567890abcdef"]), []).message).toContain("0x12345678...");
   });
 });
 

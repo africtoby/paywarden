@@ -3,12 +3,11 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createPublicClient, createTestClient, createWalletClient, defineChain, http, parseEventLogs, type Abi, type Address, type Hex } from "viem";
+import { createPublicClient, createTestClient, createWalletClient, defineChain, http, keccak256, parseEventLogs, stringToHex, type Abi, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { vaultAbi } from "../src/abi.js";
 import { submitRun } from "../src/submit.js";
-import { validate, payeeIdOf } from "../src/validate.js";
-import { parseRules } from "../src/parse-rules.js";
+import { toUnits, validateSigned, payeeIdOf, payLineTypedData } from "../src/validate.js";
 
 // Local anvil (no fork) + the real contracts from contracts/out. Skipped if anvil is not installed.
 const anvilBin = [path.join(homedir(), ".foundry", "bin", "anvil"), "anvil"].find(
@@ -22,6 +21,7 @@ const keys = {
   agent: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f88d7d4d3f0bd0",
   ada: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdd6e7dc",
   grace: "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
+  attacker: "0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a",
 } as const;
 const out = path.resolve(__dirname, "../../contracts/out");
 const artifact = (file: string, name: string) => {
@@ -87,42 +87,80 @@ describe.skipIf(!anvilBin)("agent against a real vault (local anvil)", () => {
 
   afterAll(() => { proc?.kill(); });
 
-  const sheet = (lines: string) => validate(parseRules(lines), payees);
+  const idOf = (name: string) => payeeIdOf(name, name === "Ada Lovelace" ? saltA : saltG);
+  const memoOf = (m: string) => keccak256(stringToHex(m));
+  const ctx = () => ({
+    vault,
+    chainId: chain.id,
+    wallet: (id: Hex) => pub.readContract({ address: vault, abi: vaultAbi, functionName: "payeeWallet", args: [id] }),
+    verifyTypedData: (a: Parameters<typeof pub.verifyTypedData>[0]) => pub.verifyTypedData(a),
+  });
+  /** Signs a line the way a worker's wallet would (EIP-712, domain from the deployed vault and the local chain id). */
+  const signLine = (key: Hex, name: string, amount: bigint, memo: string) =>
+    privateKeyToAccount(key).signTypedData(payLineTypedData(vault, chain.id, idOf(name), amount, memoOf(memo)));
+  /** A hand-built proposal that skips the agent's own checks, so the contract has to refuse it. */
+  const raw = (name: string, amount: bigint, memo: string, signature: Hex) => ({
+    payeeIds: [idOf(name)], amounts: [amount], memoHash: memoOf(memo), signatures: [signature], lines: [{ name, amount }],
+  });
+  const signedSheet = async (memo: string, lines: { name: string; amount: string; key?: Hex; signature?: Hex }[]) =>
+    validateSigned(
+      { memo, lines: await Promise.all(lines.map(async (l) => ({ name: l.name, amount: l.amount, signature: l.signature ?? (l.key ? await signLine(l.key, l.name, toUnits(l.amount, 6), memo) : undefined) }))) },
+      payees,
+      ctx(),
+    );
 
-  it("proposes an honest run, waits for the receipt, and a retry is idempotent", async () => {
-    const p = sheet("memo: Week 12\nAda Lovelace, 40, 25.50");
+  it("proposes an honest signed run, waits for the receipt, and a retry is idempotent", async () => {
+    const p = await signedSheet("Week 12", [{ name: "Ada Lovelace", amount: "1020", key: keys.ada }]);
     const first = await submitRun(deps(), p);
     expect(first.status).toBe("proposed");
     const again = await submitRun(deps(), p);
     expect(again.status).toBe("already-proposed");
   });
 
-  it("poisoned: pay over the per-person cap is refused by the CONTRACT", async () => {
-    // Passes our sanity limits (400h x 10000) but not the owner's on-chain caps.
-    const p = sheet("memo: poisoned\nAda Lovelace, 400, 9000");
+  it("the agent refuses an unsigned line before sending anything", async () => {
+    await expect(signedSheet("unsigned", [{ name: "Ada Lovelace", amount: "1" }])).rejects.toThrow(/Ada Lovelace's line is not signed/);
+  });
+
+  it("the agent refuses a tampered amount (signed $1, claims $100)", async () => {
+    const signature = await signLine(keys.ada, "Ada Lovelace", 1_000_000n, "tamper");
+    await expect(signedSheet("tamper", [{ name: "Ada Lovelace", amount: "100", signature }])).rejects.toThrow(/signature does not match/);
+  });
+
+  it("forged: a signature by the wrong key, forced past the agent, is refused by the CONTRACT", async () => {
+    const forged = await signLine(keys.attacker, "Ada Lovelace", 1_000_000n, "forged");
+    const r = await submitRun(deps(), raw("Ada Lovelace", 1_000_000n, "forged", forged));
+    expect(r).toMatchObject({ status: "refused", errorName: "InvalidWorkerSignature" });
+    expect((r as { message: string }).message).toContain("Ada Lovelace's $1 line");
+  });
+
+  it("forged: an empty signature is refused by the contract", async () => {
+    const r = await submitRun(deps(), raw("Ada Lovelace", 1_000_000n, "empty", "0x"));
+    expect(r).toMatchObject({ status: "refused", errorName: "InvalidWorkerSignature" });
+  });
+
+  it("poisoned: pay over the per-person cap, even with a valid signature, is refused by the CONTRACT", async () => {
+    const p = await signedSheet("poisoned", [{ name: "Ada Lovelace", amount: "3600000", key: keys.ada }]);
     const r = await submitRun(deps(), p);
     expect(r).toMatchObject({ status: "refused", errorName: "PerPayeeCapExceeded" });
-    expect((r as { message: string }).message).toContain("$3,600,000"); // 400 h x 9000, written in dollars
+    expect((r as { message: string }).message).toContain("$3,600,000");
   });
 
   it("poisoned: a payee who has not confirmed is refused by the contract", async () => {
-    const r = await submitRun(deps(), sheet("memo: ghost\nGrace Hopper, 10, 10"));
+    const sig = await signLine(keys.grace, "Grace Hopper", 100_000n, "ghost");
+    const r = await submitRun(deps(), raw("Grace Hopper", 100_000n, "ghost", sig));
     expect(r).toMatchObject({ status: "refused", errorName: "PayeeNotConfirmed" });
   });
 
   it("poisoned: bypassing our own validation, a hand-built bad proposal is still refused", async () => {
-    const r = await submitRun(deps(), {
-      payeeIds: [payeeIdOf("Ada Lovelace", saltA)],
-      amounts: [1_000_000n * USD],
-      memoHash: `0x${"00".repeat(32)}`,
-      lines: [],
-    });
+    const sig = await signLine(keys.ada, "Ada Lovelace", 1_000_000n * USD, "x");
+    const r = await submitRun(deps(), raw("Ada Lovelace", 1_000_000n * USD, "x", sig));
     expect(r).toMatchObject({ status: "refused" });
   });
 
   it("a wallet that is not the assistant is refused", async () => {
     const other = privateKeyToAccount(keys.grace);
-    const r = await submitRun({ ...deps(), wallet: wallet(keys.grace), account: other }, sheet("Ada Lovelace, 1, 1"));
+    const p = await signedSheet("notagent", [{ name: "Ada Lovelace", amount: "1", key: keys.ada }]);
+    const r = await submitRun({ ...deps(), wallet: wallet(keys.grace), account: other }, p);
     expect(r).toMatchObject({ status: "refused", errorName: "NotAgent" });
   });
 });
