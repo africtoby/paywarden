@@ -47,7 +47,7 @@ The core contracts stay open source. The business is in the hosting, the integra
 
 ## Known limits today
 
-- Testnet only, not audited.
+- Testnet only. Internal security review done 28 Nov 2026 ([SECURITY-REVIEW.md](SECURITY-REVIEW.md)): 1 medium finding fixed and redeployed, 8 low or informational acknowledged. No external audit yet; planned before mainnet.
 - If one transfer in a run fails, the whole run reverts and nobody is paid. That's safe (no partial payroll), but one bad payee blocks the run until it's fixed.
 - Invite names and salts live in the employer's browser. There is now a backup and restore button, but no server copy.
 - The app always binds invites to the payee's wallet. Direct contract callers can still make an open invite (`address(0)`), which anyone holding the secret could confirm first.

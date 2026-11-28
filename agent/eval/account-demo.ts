@@ -14,7 +14,7 @@ import {
   encodeAbiParameters, parseEventLogs, stringToHex, type Abi, type Address, type Hex,
 } from "viem";
 import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
-import { ENTRY_POINT_V07, buildProposeOp, entryPointAbi, submitRunViaAccount } from "../src/smart-account.js";
+import { ENTRY_POINT_V07, buildProposeOp, entryPointAbi, pack128, submitRunViaAccount } from "../src/smart-account.js";
 import { payLineTypedData, payeeIdOf, validateSigned } from "../src/validate.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -22,7 +22,7 @@ const ROOT = resolve(here, "..", "..");
 loadEnv({ path: resolve(ROOT, ".env") });
 
 const VAULT_FACTORY = "0xfaC8ebb7D8f494618068B7eF86FF9A0767b34209" as Address;
-const ACCOUNT_FACTORY = "0x9F59524dD9002e4A96FAFdd11C0F1A9A7b5809a5" as Address;
+const ACCOUNT_FACTORY = "0x8AD21c204984B915498a98DaBcd7A7AcC03392Bb" as Address;
 const RPC = process.env.RPC_URL ?? "https://rpc-test.qday.info";
 const USD = 1_000_000n;
 const GAS = 800_000n;
@@ -106,6 +106,25 @@ async function main() {
   if (r1.status === "success") throw new Error(`STOP: approveRun by the session key was ALLOWED (${tx1})`);
   proof["REFUSED session key tries approveRun (AA24 signature error)"] = tx1;
   console.log(`refused  session key approveRun -> AA24  ${tx1}`);
+
+  // 5b. Refused on-chain: the session key offers 5x the owner's gas-price cap (would drain the deposit faster).
+  const memo3 = "Week 49 overpay";
+  const sig3 = await ada.signTypedData(payLineTypedData(vault, chain.id, id, USD / 2n, keccak256(stringToHex(memo3))));
+  const inner3 = encodeFunctionData({
+    abi: parseAbi(["function proposeRun(bytes32[],uint256[],bytes32,bytes[])"]),
+    functionName: "proposeRun",
+    args: [proposal.payeeIds, proposal.amounts, keccak256(stringToHex(memo3)), [sig3]],
+  });
+  const { op: greedy } = await buildProposeOp(deps, inner3);
+  greedy.gasFees = pack128(50_000_000_000n, 50_000_000_000n);
+  greedy.signature = await session.signMessage({
+    message: { raw: await pub.readContract({ address: ENTRY_POINT_V07, abi: entryPointAbi, functionName: "getUserOpHash", args: [greedy] }) },
+  });
+  const tx3 = await walletOf(owner).writeContract({ address: ENTRY_POINT_V07, abi: entryPointAbi, functionName: "handleOps", args: [[greedy], owner.address], gas: GAS, account: owner, chain });
+  const r3 = await pub.waitForTransactionReceipt({ hash: tx3 });
+  if (r3.status === "success") throw new Error(`STOP: an over-cap gas price was ALLOWED (${tx3})`);
+  proof["REFUSED session key offers 50 gwei against a 10 gwei cap (AA24 signature error)"] = tx3;
+  console.log(`refused  session key over the fee cap -> AA24  ${tx3}`);
 
   // 6. Refused on-chain: the owner revokes the session key, the assistant tries again.
   await ok("Owner revokes the session key", owner, smartAccount, accountAbi, "revokeSessionKey");

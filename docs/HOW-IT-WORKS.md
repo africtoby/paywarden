@@ -82,7 +82,7 @@ The contract checked Ada's signature against the wallet she confirmed, and the r
 
 ## Known limits
 
-- Testnet tokens and test wallets only. Not audited.
+- Testnet tokens and test wallets only. Internal security review done 28 Nov 2026 ([SECURITY-REVIEW.md](SECURITY-REVIEW.md)): 1 medium finding fixed and redeployed, 8 low or informational acknowledged. No external audit yet; planned before mainnet.
 - The app always binds an invite to the payee's wallet. The contract also allows an open invite (`address(0)`) for direct integrations, which anyone holding the secret could confirm first.
 - If one transfer in a run fails, the whole run reverts: no partial payroll, but one bad payee blocks the run.
 - Invite names and salts live in the employer's browser.

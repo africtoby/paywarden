@@ -33,7 +33,7 @@ The idea: the worker signs the hours, the AI drafts, you sign the pay. Three peo
 
 | What | Evidence |
 | --- | --- |
-| Contract tests | 118 Foundry tests: unit, fuzz, invariant, ERC-4337, every revert path. 95.1% line coverage overall, 100% on the four payroll contracts and 98% on the smart account. |
+| Contract tests | 123 Foundry tests: unit, fuzz, invariant, ERC-4337, every revert path. 99.7% line coverage of the contract source (100% on the four payroll contracts, 98% on the smart account). |
 | Fuzz | 10,000 runs per fuzz test (`contracts/foundry.toml`), on caps, signatures, amounts and the session key's call filter. |
 | Invariants | 4 invariants x 512 runs x 64 calls each, including "a signed line is paid at most once". |
 | Agent | 41 tests (unit, plus local-chain tests that deploy the real contracts and the canonical EntryPoint v0.7). |
@@ -41,7 +41,7 @@ The idea: the worker signs the hours, the AI drafts, you sign the pay. Three peo
 | End to end | 17 Playwright tests at two screen sizes, 34 runs. |
 | CI | [GitHub Actions](https://github.com/africtoby/paywarden/actions/workflows/ci.yml): contracts, agent, web and end-to-end jobs on every push. |
 | Verified contracts | Factory, vault, policy and registry are verified on the Aevum explorer. Each address is listed with the commit it was built from in [Deployments](../README.md#deployments). |
-| Platform use | Aevum testnet for all settlement, tUSD8 (6 decimals) as the pay currency, tQDAY (18 decimals) for gas, an ERC-8004 identity registry, a spend policy, and ERC-4337: an employer-owned smart account on the canonical EntryPoint v0.7 with a scoped session key for the assistant ([factory, verified](https://explorer-test.qday.info/address/0x9F59524dD9002e4A96FAFdd11C0F1A9A7b5809a5)). Details in [How it uses the QDay platform](../README.md#how-it-uses-the-qday-platform). |
+| Platform use | Aevum testnet for all settlement, tUSD8 (6 decimals) as the pay currency, tQDAY (18 decimals) for gas, an ERC-8004 identity registry, a spend policy, and ERC-4337: an employer-owned smart account on the canonical EntryPoint v0.7 with a scoped session key for the assistant ([factory, verified](https://explorer-test.qday.info/address/0x8AD21c204984B915498a98DaBcd7A7AcC03392Bb)). Details in [How it uses the QDay platform](../README.md#how-it-uses-the-qday-platform). |
 | Agent design | An LLM reads a free-form timesheet; plain code validates and simulates; a no-LLM mode exists; retries with backoff; waits for receipts. The contract is the final judge. |
 
 ## Real-world utility (15)
@@ -51,6 +51,8 @@ The idea: the worker signs the hours, the AI drafts, you sign the pay. Three peo
 - A [full payday on the current contracts](../README.md#on-chain-proof) from invite to payment to switch-off, and [how it works](HOW-IT-WORKS.md) as a case study.
 
 ## Safety, trust and controls (15)
+
+- **[Internal security review](SECURITY-REVIEW.md):** Slither plus a manual checklist review of every contract. 1 medium finding (session-key gas) fixed, tested, redeployed and its refusal recorded on-chain; 8 low or informational findings acknowledged with reasons.
 
 - **[Attack test](ATTACK-TEST.md): 63 of 63 attacks refused, 0 wrong payments, 85 transactions.** 52 refusals are failed transactions on the explorer; 11 were stopped earlier by the agent's own checks. The attacks cover inflated and poisoned amounts, cap breaches, look-alike and unconfirmed payees, replays, the assistant key trying owner powers, a copied invite, expired, paused and switched-off permissions, prompt-injected timesheets, and forged, tampered, reused, empty or missing worker signatures. Run it yourself: `cd agent && npm run attack-test`.
 - Named custom errors for every rejection, and an event for every action.
@@ -81,11 +83,11 @@ The video was recorded before workers signed their lines. The worker-signature f
 
 ## Honest limits
 
-- Testnet only, with test tokens. The code has not been audited.
+- Testnet only, with test tokens. Internal security review done 28 Nov 2026 ([SECURITY-REVIEW.md](SECURITY-REVIEW.md)): 1 medium finding fixed and redeployed, 8 low or informational acknowledged. No external audit yet; planned before mainnet.
 - The demo video predates worker signatures. It shows the earlier deployment; the signed flow is in the proof tables and the try page.
 - The worker's signing step needs the worker to open a link and sign once. It adds a step to payday in exchange for removing the assistant's power to invent a line.
 - If one transfer in a run fails, the whole run reverts and nobody in it is paid, so one bad payee blocks the run until it is fixed.
 - Invite names and salts live in the employer's browser. There is a backup and restore button but no server copy.
-- No paymaster: the smart account pays its own gas from its EntryPoint deposit, which a compromised session key could spend (it still cannot do anything but propose). No public bundler is listed for Aevum, so the agent submits `handleOps` itself.
+- No paymaster: the smart account pays its own gas from its EntryPoint deposit; the session key's gas price and gas limit are capped by the owner. No public bundler is listed for Aevum, so the agent submits `handleOps` itself.
 - The identity registry is a reference implementation. We will switch to QDay's if one is published.
 - The attack test is our own. It shows the contract refuses what we thought of, not that nothing else exists.

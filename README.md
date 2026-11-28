@@ -11,8 +11,8 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-8DA597?style=flat)](LICENSE)
 
 ![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?style=flat&logo=solidity&logoColor=white)
-![Foundry](https://img.shields.io/badge/Foundry-118_tests-E35F23?style=flat)
-![Coverage](https://img.shields.io/badge/coverage-95.1%25-1F6B47?style=flat)
+![Foundry](https://img.shields.io/badge/Foundry-123_tests-E35F23?style=flat)
+![Coverage](https://img.shields.io/badge/coverage-99.7%25-1F6B47?style=flat)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat&logo=nextdotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-agent_+_web-3178C6?style=flat&logo=typescript&logoColor=white)
 ![viem](https://img.shields.io/badge/wagmi_+_viem-RainbowKit-7B3FE4?style=flat)
@@ -170,7 +170,8 @@ Every deployment and the exact commit it was built from. Vaults and spend polici
 | --- | --- | --- | --- |
 | PayrollVaultFactory (current, verified) | [`0xfaC8…4209`](https://explorer-test.qday.info/address/0xfaC8ebb7D8f494618068B7eF86FF9A0767b34209) | [`c136c0a`](https://github.com/africtoby/paywarden/commit/c136c0a) | [`0x4bd3e6e9…7700`](https://explorer-test.qday.info/tx/0x4bd3e6e9f157308d8f5ae62242c81870e9773907950ae258608da1d156687700) |
 | PayrollVaultFactory (previous, before worker signatures) | [`0x624C…198E`](https://explorer-test.qday.info/address/0x624C478779CCc80299bAa2A22833bab88e18198E) | [`feb30d4`](https://github.com/africtoby/paywarden/commit/feb30d4) | [`0xf24a4ac3…7101`](https://explorer-test.qday.info/tx/0xf24a4ac3ace4af062c13fbdb2f90d8bbfd05105f72d973e9e2d8f6e6c5ed7101) |
-| AgentAccountFactory (ERC-4337, verified) | [`0x9F59…09a5`](https://explorer-test.qday.info/address/0x9F59524dD9002e4A96FAFdd11C0F1A9A7b5809a5) | [`79a7e68`](https://github.com/africtoby/paywarden/commit/79a7e68) | [`0xd3132c7d…cf55`](https://explorer-test.qday.info/tx/0xd3132c7d8fc43be75722ad2becfb8ac2459ef02ccb3b99ef3f0cc5739d72cf55) |
+| AgentAccountFactory (ERC-4337, current, verified) | [`0x8AD2…92Bb`](https://explorer-test.qday.info/address/0x8AD21c204984B915498a98DaBcd7A7AcC03392Bb) | [`19a72a8`](https://github.com/africtoby/paywarden/commit/19a72a8) | [`0x1f5c9322…19c9`](https://explorer-test.qday.info/tx/0x1f5c932245d8528f5ec2bd9cd1a8c6b2086bf907787bf197cf6e30368a4919c9) |
+| AgentAccountFactory (previous, before the session gas cap) | [`0x9F59…09a5`](https://explorer-test.qday.info/address/0x9F59524dD9002e4A96FAFdd11C0F1A9A7b5809a5) | [`79a7e68`](https://github.com/africtoby/paywarden/commit/79a7e68) | [`0xd3132c7d…cf55`](https://explorer-test.qday.info/tx/0xd3132c7d8fc43be75722ad2becfb8ac2459ef02ccb3b99ef3f0cc5739d72cf55) |
 | IdentityRegistry (verified) | [`0x65b0…6F85`](https://explorer-test.qday.info/address/0x65b0B1df79B5A61021feF2BfA489a49A6b646F85) | [`652ecba`](https://github.com/africtoby/paywarden/commit/652ecba) | [`0xac68426f…1b22`](https://explorer-test.qday.info/tx/0xac68426f651d768b8a86deb395558199f394e603343c10f8ac21d55ac8ab1b22) |
 | Demo vault + spend policy (worker-signed payday) | [`0xDa9E…3273`](https://explorer-test.qday.info/address/0xDa9E2AF624d26C0015E3e3a62BF2eEdD4bf13273), [`0x3B59…2e52`](https://explorer-test.qday.info/address/0x3B59877Ddd505EaAC80bA3DbE915570Da8742e52) | [`c136c0a`](https://github.com/africtoby/paywarden/commit/c136c0a) (via the factory) | [`0x88a51701…7f26`](https://explorer-test.qday.info/tx/0x88a51701ca116141dac8444c70a97d6843586f8f3aee7ba57546ca2101f97f26) |
 | Earlier demo vault + spend policy | [`0x1712…3C76`](https://explorer-test.qday.info/address/0x171290CcBA179A9B8f89ff408134F09F33Da3C76), [`0x6dA8…fE40`](https://explorer-test.qday.info/address/0x6dA8BE510De086f61D9819906203b15AE433fE40) | [`feb30d4`](https://github.com/africtoby/paywarden/commit/feb30d4) (via the factory) | [`0x3f0ff2dd…1c83`](https://explorer-test.qday.info/tx/0x3f0ff2ddc376e7e5d1c78b55ccf0404277f5b83ac5e26b956202acb203261c83) |
@@ -209,19 +210,20 @@ A full payday on the current contracts (factory `0xfaC8…4209`, vault `0xDa9E�
 
 The refused rows were sent on purpose, with a fixed gas limit, so the refusal is recorded on-chain. In normal use the agent simulates first and never sends them.
 
-**The assistant through an ERC-4337 smart account**, 28 Nov 2026 (account factory `0x9F59…09a5`, account [`0x6413…0212`](https://explorer-test.qday.info/address/0x641313e4B3b48D5a6Cdf388e6c30Fe6aD1540212), vault [`0x40C5…53AA`](https://explorer-test.qday.info/address/0x40C5B22D637384A992c0dcFBf9d3Ee24E4bB53AA)). The session key was a fresh key that never held anything: its balance is still 0. Script: [`agent/eval/account-demo.ts`](agent/eval/account-demo.ts), results: [docs/account-demo-results.json](docs/account-demo-results.json).
+**The assistant through an ERC-4337 smart account**, 28 Nov 2026 (account factory `0x8AD2…92Bb`, account [`0x164a…309D`](https://explorer-test.qday.info/address/0x164a8C5dB6622137226b98379206814c19A4309D), vault [`0x0b91…974c`](https://explorer-test.qday.info/address/0x0b9186979489436284EC539F41082FA535e6974c)). The session key was a fresh key that never held anything: its balance is still 0. Script: [`agent/eval/account-demo.ts`](agent/eval/account-demo.ts), results: [docs/account-demo-results.json](docs/account-demo-results.json).
 
 | Step | Transaction |
 | --- | --- |
-| Create the employer's smart account (CREATE2) | [0x675091a2…2080](https://explorer-test.qday.info/tx/0x675091a21385ae6a563c961fe8e30327dae35bc82cedae379ab747cd6a9e2080) |
-| Deposit gas at the EntryPoint | [0x789dee1d…d27f](https://explorer-test.qday.info/tx/0x789dee1debb3ddfae6ad8f1748503d0bdecd833eee48a476ec5a51bb9b94d27f) |
-| Give the assistant a session key (`proposeRun` on this vault only, 7 days) | [0x9c0e35f4…4270](https://explorer-test.qday.info/tx/0x9c0e35f4e0d64186204d7b91418628bcfda8b3d7811e070699cd69fe55274270) |
-| Set the smart account as the vault's assistant, with limits | [0xbdf4372e…65cf](https://explorer-test.qday.info/tx/0xbdf4372e4a3bc74f72e0610b479895c8863361366277ff5c7f5fec196c6565cf) |
-| Ada confirms her wallet and signs her $0.50 line | [0xa0f1abef…7878](https://explorer-test.qday.info/tx/0xa0f1abeff55a0d174c8b41650fc87f7dbe135d49b1bf72a07598a2c792cd7878) |
-| Assistant proposes the signed run as a user operation (`handleOps`) | [0x6e6b75c5…7329](https://explorer-test.qday.info/tx/0x6e6b75c5f278f4dd4e52cc1912754c525cdd0f850818d3159f54fd312f297329) |
-| **Refused:** the session key tries `approveRun` (`AA24 signature error`) | [0xddf3f10e…2604](https://explorer-test.qday.info/tx/0xddf3f10eeba0df23aa63d5ef12df0857f49e90e224e33679fbe481709fae2604) |
-| Owner revokes the session key | [0x4d7e7f19…d7ed](https://explorer-test.qday.info/tx/0x4d7e7f19bf6c9caa966ad2e15ab6d8f354a658c9f7a9b1d7b0c0d7237d64d7ed) |
-| **Refused:** the revoked key tries to propose (`AA24 signature error`) | [0xb04a9eb2…c50a](https://explorer-test.qday.info/tx/0xb04a9eb2d05609ee6927895eba5eb38228aa5800c7ec62ff42fab32b9a0dc50a) |
+| Create the employer's smart account (CREATE2) | [0xc2227df7…0be0](https://explorer-test.qday.info/tx/0xc2227df78dec900cc9ce6ebd20b7d29571da278db8dddc8ed6f5dfedceb00be0) |
+| Deposit gas at the EntryPoint | [0xae2a5763…03e7](https://explorer-test.qday.info/tx/0xae2a576316f95118f3df5b2bda75c7065cbeacd084a98f1f0c1f5f2bde3803e7) |
+| Give the assistant a session key (`proposeRun` on this vault only, 7 days, gas price cap 10 gwei) | [0x226347fd…b527](https://explorer-test.qday.info/tx/0x226347fde47bcb19e2f47f309327c8f2b09bce5f3ea469d90d465134c3b0b527) |
+| Set the smart account as the vault's assistant, with limits | [0x5ad9ce92…c9e6](https://explorer-test.qday.info/tx/0x5ad9ce92d8d301e55d8ec37c91dca69400672579404efdc036fd715ee8a7c9e6) |
+| Ada confirms her wallet and signs her $0.50 line | [0xe64d8f65…e6e4](https://explorer-test.qday.info/tx/0xe64d8f65280e32eacd8bbebf8dc21a2b5cf2e3eb830d87130a842e80c03ce6e4) |
+| Assistant proposes the signed run as a user operation (`handleOps`) | [0xc0aec5bc…ceca](https://explorer-test.qday.info/tx/0xc0aec5bcf2cb421e84085ccfa744d9319fffc648a5f78a55a56e23b63af2ceca) |
+| **Refused:** the session key tries `approveRun` (`AA24 signature error`) | [0x5879f39b…bc50](https://explorer-test.qday.info/tx/0x5879f39b8607e47e5d11b537c6cdba25c4d58e7f02d579129532829b3890bc50) |
+| **Refused:** the session key offers 50 gwei against the 10 gwei cap (`AA24 signature error`) | [0x405b26f4…e051](https://explorer-test.qday.info/tx/0x405b26f48b30165b1201c6ee594830889dde94339913ab444c08a3809d20e051) |
+| Owner revokes the session key | [0x2ac77381…9bc2](https://explorer-test.qday.info/tx/0x2ac773810af8aefd072a78767f711dbda25aa9f4b05abcad26189a260abc9bc2) |
+| **Refused:** the revoked key tries to propose (`AA24 signature error`) | [0xa71eb34b…1326](https://explorer-test.qday.info/tx/0xa71eb34b6e974611fdd087ecd085c2431f31d39903e26f3923b9af7efd4e1326) |
 
 The demo video was recorded on an earlier deployment (factory `0xC128…80DA`), before workers signed their lines. That payday is also on the explorer: [pay transaction](https://explorer-test.qday.info/tx/0x5ee35c50dedf2b4aa8e92dbd6b405efde04146e0f280b52df94cb18afce87640).
 
@@ -265,7 +267,7 @@ All live in the root `.env` (copy of `.env.example`). The agent reads `agent/.en
 ```bash
 cd contracts
 forge build
-forge test               # 118 tests: unit, fuzz (10,000 runs each), invariant, ERC-4337 and every revert path
+forge test               # 123 tests: unit, fuzz (10,000 runs each), invariant, ERC-4337 and every revert path
 forge coverage --report summary
 ```
 
@@ -366,14 +368,14 @@ The run key is `keccak256(abi.encode(payeeIds, amounts, memoHash))`, which is al
 - Caps are enforced on-chain at proposal time and again at payment time.
 - Payee names and salts stay in the employer's browser; the chain stores only the hash.
 - Every invite made in the app is bound to the payee's wallet, so only that wallet can confirm it, even if someone copies the link or sees the secret in a pending transaction (proven on-chain: `UnexpectedWallet`). The contract also accepts an open invite (`address(0)`) for direct integrations; the app never sends one.
-- Test tokens and test wallets only. This code has not been audited.
+- Test tokens and test wallets only. [Internal security review](docs/SECURITY-REVIEW.md) done on 28 Nov 2026: 1 medium finding (fixed and redeployed), 8 low or informational (acknowledged). No external audit yet; one is planned before mainnet.
 
 ## Known constraints
 
 - If one transfer in a run fails, the whole run reverts and nobody in it is paid. That's safe (no partial payroll), but one bad payee blocks the run until it's fixed.
 - The same payees, amounts and memo give the same run key, so a paid run can't be drafted twice. Put the period in the memo (for example `memo: Week 48`).
 - Invite links live in the employer's browser. Use Back up invites on the Payees page.
-- No paymaster: the smart account pays its own gas from its EntryPoint deposit. A compromised session key can only propose, but it could spend that gas deposit, so keep it small.
+- No paymaster: the smart account pays its own gas from its EntryPoint deposit. A session key can only propose, and its gas price and gas limit are capped by the owner, so it cannot drain the deposit at an inflated price.
 - No public ERC-4337 bundler is listed for Aevum yet, so the agent submits `handleOps` itself from a relayer key.
 
 ## Roadmap
