@@ -33,7 +33,7 @@ An assistant reads a timesheet and drafts a pay run in tUSD8. A smart contract o
 > **The 5-minute tour**
 > 1. [Try it without a wallet](https://paywarden.me/try): run a payday in five steps, try to trick the assistant, and watch the contract's checks refuse it.
 > 2. Watch the [2-minute demo](https://youtu.be/EGevjYKSC4A).
-> 3. Read the [attack test](docs/ATTACK-TEST.md): 45 of 45 attacks refused on Aevum testnet, 0 wrong payments, every refusal an on-chain transaction.
+> 3. Read the [attack test](docs/ATTACK-TEST.md): 63 of 63 attacks refused on Aevum testnet, 0 wrong payments, every refusal an on-chain transaction.
 > 4. See every address and the commit it was built from in [Deployments](#deployments), and a full payday in [On-chain proof](#on-chain-proof).
 > 5. Use the real app at [paywarden.me](https://paywarden.me) (free test tokens from the [QDay faucet](https://faucet.qday.info/en)). The code as submitted is tagged [`submission-v1`](https://github.com/africtoby/paywarden/tree/submission-v1).
 
@@ -99,8 +99,9 @@ PayWarden splits the job. The assistant reads and drafts. A contract holds the m
 
 ```mermaid
 flowchart LR
-    TS[Timesheet] --> AG[Assistant<br/>agent/ Node + TS]
-    AG -- "proposeRun only" --> V[PayrollVault]
+    W[Worker] -- "signs each pay line<br/>(EIP-712, no gas)" --> TS[Signed timesheet]
+    TS --> AG[Assistant<br/>agent/ Node + TS]
+    AG -- "proposeRun only,<br/>with the signatures" --> V[PayrollVault<br/>checks each signature]
     V -- "checkRun / recordRun" --> P[AgentSpendPolicy<br/>caps, expiry, revoke]
     F[PayrollVaultFactory] -- creates --> V
     F -- creates --> P
@@ -122,7 +123,10 @@ sequenceDiagram
     participant P as AgentSpendPolicy
     E->>V: invitePayee(hash(name, salt), Ada's wallet)
     Y->>V: confirmPayee(name, salt) from her own wallet
-    A->>V: proposeRun(payeeIds, amounts, memoHash)
+    Y->>A: signs her PayLine(payeeId, amount, memoHash), no gas
+    Note over A: checks every signature off-chain first
+    A->>V: proposeRun(payeeIds, amounts, memoHash, signatures)
+    Note over V: verifies each signature against the wallet Ada confirmed
     V->>P: checkRun: agent? caps? expiry? revoked?
     P-->>V: ok, or a named error (the run is refused)
     Note over V: review window
@@ -137,10 +141,11 @@ sequenceDiagram
 1. **Vault.** An employer creates a vault through the factory and deposits tUSD8.
 2. **Confirmation of payee.** The employer invites a payee by a hash of their name and a secret salt, and gives the payee's wallet address. The payee opens the invite link and confirms from that wallet. Any other wallet is refused with `UnexpectedWallet`, even one that copied the secret from a pending transaction. The confirmed wallet is registered in an ERC-8004 style identity registry. The owner can unlink a wrong wallet with `revokePayee`, which also retires that invite.
 3. **Assistant permissions.** A separate policy contract holds the assistant's address, a per-run cap, a per-person cap, a period cap with its period, an expiry, and an off switch.
-4. **Propose.** The assistant calls `proposeRun(payeeIds, amounts, memoHash)`. The contract rejects anything outside the policy with a named error.
-5. **Review window.** Every run waits for the review window, counted from when it was proposed.
-6. **Approve and pay.** The owner approves (or cancels), then calls `executeRun`, which pays everyone in one transaction. A run can execute once, and each proposal has a unique run key, so a retry cannot pay twice. A cancelled run can be drafted again.
-7. **Pause.** `pause()` freezes proposing, approving and paying. Cancelling and withdrawing still work.
+4. **Workers sign their pay lines.** Each worker signs their own line (name, amount, memo) with the wallet they confirmed. It is an EIP-712 signature, so it costs no gas. The assistant cannot invent or change a line without a signature the worker's wallet made.
+5. **Propose.** The assistant calls `proposeRun(payeeIds, amounts, memoHash, signatures)`. The contract checks every signature against the confirmed wallet (`InvalidWorkerSignature` otherwise) and rejects anything outside the policy with a named error. A signed line can be paid once (`LineAlreadyPaid`).
+6. **Review window.** Every run waits for the review window, counted from when it was proposed.
+7. **Approve and pay.** The owner approves (or cancels), then calls `executeRun`, which pays everyone in one transaction. A run can execute once, and each proposal has a unique run key, so a retry cannot pay twice. A cancelled run can be drafted again.
+8. **Pause.** `pause()` freezes proposing, approving and paying. Cancelling and withdrawing still work.
 
 Every rejection is a custom error and every action emits an event. The web app turns both into plain English and links each event to the explorer.
 
@@ -161,9 +166,11 @@ Every deployment and the exact commit it was built from. Vaults and spend polici
 
 | Deployment | Address | Built from commit | Deploy transaction |
 | --- | --- | --- | --- |
-| PayrollVaultFactory (current, verified) | [`0x624C…198E`](https://explorer-test.qday.info/address/0x624C478779CCc80299bAa2A22833bab88e18198E) | [`feb30d4`](https://github.com/africtoby/paywarden/commit/feb30d4) | [`0xf24a4ac3…7101`](https://explorer-test.qday.info/tx/0xf24a4ac3ace4af062c13fbdb2f90d8bbfd05105f72d973e9e2d8f6e6c5ed7101) |
+| PayrollVaultFactory (current, verified) | [`0xfaC8…4209`](https://explorer-test.qday.info/address/0xfaC8ebb7D8f494618068B7eF86FF9A0767b34209) | [`c136c0a`](https://github.com/africtoby/paywarden/commit/c136c0a) | [`0x4bd3e6e9…7700`](https://explorer-test.qday.info/tx/0x4bd3e6e9f157308d8f5ae62242c81870e9773907950ae258608da1d156687700) |
+| PayrollVaultFactory (previous, before worker signatures) | [`0x624C…198E`](https://explorer-test.qday.info/address/0x624C478779CCc80299bAa2A22833bab88e18198E) | [`feb30d4`](https://github.com/africtoby/paywarden/commit/feb30d4) | [`0xf24a4ac3…7101`](https://explorer-test.qday.info/tx/0xf24a4ac3ace4af062c13fbdb2f90d8bbfd05105f72d973e9e2d8f6e6c5ed7101) |
 | IdentityRegistry (verified) | [`0x65b0…6F85`](https://explorer-test.qday.info/address/0x65b0B1df79B5A61021feF2BfA489a49A6b646F85) | [`652ecba`](https://github.com/africtoby/paywarden/commit/652ecba) | [`0xac68426f…1b22`](https://explorer-test.qday.info/tx/0xac68426f651d768b8a86deb395558199f394e603343c10f8ac21d55ac8ab1b22) |
-| Demo vault + spend policy | [`0x1712…3C76`](https://explorer-test.qday.info/address/0x171290CcBA179A9B8f89ff408134F09F33Da3C76), [`0x6dA8…fE40`](https://explorer-test.qday.info/address/0x6dA8BE510De086f61D9819906203b15AE433fE40) | [`feb30d4`](https://github.com/africtoby/paywarden/commit/feb30d4) (via the factory) | [`0x3f0ff2dd…1c83`](https://explorer-test.qday.info/tx/0x3f0ff2ddc376e7e5d1c78b55ccf0404277f5b83ac5e26b956202acb203261c83) |
+| Demo vault + spend policy (worker-signed payday) | [`0xDa9E…3273`](https://explorer-test.qday.info/address/0xDa9E2AF624d26C0015E3e3a62BF2eEdD4bf13273), [`0x3B59…2e52`](https://explorer-test.qday.info/address/0x3B59877Ddd505EaAC80bA3DbE915570Da8742e52) | [`c136c0a`](https://github.com/africtoby/paywarden/commit/c136c0a) (via the factory) | [`0x88a51701…7f26`](https://explorer-test.qday.info/tx/0x88a51701ca116141dac8444c70a97d6843586f8f3aee7ba57546ca2101f97f26) |
+| Earlier demo vault + spend policy | [`0x1712…3C76`](https://explorer-test.qday.info/address/0x171290CcBA179A9B8f89ff408134F09F33Da3C76), [`0x6dA8…fE40`](https://explorer-test.qday.info/address/0x6dA8BE510De086f61D9819906203b15AE433fE40) | [`feb30d4`](https://github.com/africtoby/paywarden/commit/feb30d4) (via the factory) | [`0x3f0ff2dd…1c83`](https://explorer-test.qday.info/tx/0x3f0ff2ddc376e7e5d1c78b55ccf0404277f5b83ac5e26b956202acb203261c83) |
 | PayrollVaultFactory (previous, shown in the video) | [`0xC128…80DA`](https://explorer-test.qday.info/address/0xC12819acfEA15773cE49c001f6F23842cc4480DA) | [`078af3d`](https://github.com/africtoby/paywarden/commit/078af3d) | [`0xb9679ee7…cead`](https://explorer-test.qday.info/tx/0xb9679ee7101ceb1095c2a15bb67ffd1a9ec00dfb4eae00c812160ffd1cb5cead) |
 | Web app | [paywarden.me](https://paywarden.me) | `main`, auto-deployed by Vercel on every push | n/a |
 | tUSD8 (QDay's test stablecoin) | [`0x4565…3483`](https://explorer-test.qday.info/address/0x456569838f1d43009A91ebA4263147Afd7233483) | n/a | n/a |
@@ -174,31 +181,32 @@ Every deployment and the exact commit it was built from. Vaults and spend polici
 
 ## On-chain proof
 
-**Attack test.** A script throws 45 attacks at a fresh vault on Aevum testnet: poisoned and inflated amounts, cap breaches, unconfirmed and look-alike payees, malformed drafts, replays, the assistant key trying owner powers (approve, pay, withdraw, raise its caps, take ownership), a copied invite, paused, expired and switched-off permissions, and prompt-injected timesheets through the agent's own pipeline. **45 of 45 refused, 0 wrong payments, 73 transactions.** 40 refusals are failed transactions on the explorer; 5 were stopped earlier by the agent. Full table with links: [docs/ATTACK-TEST.md](docs/ATTACK-TEST.md). Run it yourself with `cd agent && npm run attack-test`.
+**Attack test.** A script throws 63 attacks at a fresh vault on Aevum testnet: poisoned and inflated amounts, cap breaches, unconfirmed and look-alike payees, malformed drafts, replays, the assistant key trying owner powers (approve, pay, withdraw, raise its caps, take ownership), a copied invite, paused, expired and switched-off permissions, forged, tampered, reused and missing worker signatures, and prompt-injected timesheets through the agent's own pipeline. **63 of 63 refused, 0 wrong payments, 85 transactions.** 52 refusals are failed transactions on the explorer; 11 were stopped earlier by the agent. Full table with links: [docs/ATTACK-TEST.md](docs/ATTACK-TEST.md). Run it yourself with `cd agent && npm run attack-test`.
 
-A full payday on the current contracts, 27 Nov 2026. The assistant's limits: $3 per run, $0.80 per person, $10 per 7 days, valid 90 days. Click any hash to open it on the explorer.
+A full payday on the current contracts (factory `0xfaC8…4209`, vault `0xDa9E…3273`), 28 Nov 2026. Ada signed her own pay line, the assistant proposed it with her signature, and the contract checked it. The assistant's limits: $3 per run, $0.80 per person, $10 per 7 days, valid 90 days. Click any hash to open it on the explorer.
 
 | Step | Transaction |
 | --- | --- |
-| Create vault (60 s review window) | [0x3f0ff2dd…1c83](https://explorer-test.qday.info/tx/0x3f0ff2ddc376e7e5d1c78b55ccf0404277f5b83ac5e26b956202acb203261c83) |
-| Deposit $1 | [0x3231d283…7799](https://explorer-test.qday.info/tx/0x3231d28305983a9f5b2a7bb534cac9470d5945febe1d13d722d563d791b97799) |
-| Set the assistant's limits | [0x29db80f7…5fd1](https://explorer-test.qday.info/tx/0x29db80f79cdf027ac8609d186e603734f5e24b1e70a921526e9c47169b655fd1) |
-| Register the assistant's identity | [0x57e3717d…a2e8](https://explorer-test.qday.info/tx/0x57e3717d5c188b5442e5ebea598ab85b12faa5b8c3c7d57fb57fcd6c7dc8a2e8) |
-| Invite Ada, bound to her wallet | [0x8dc5cb6a…7541](https://explorer-test.qday.info/tx/0x8dc5cb6a2bf69dd06a4a3da71209841f2d988369db33dd0a3bd1989bf6d47541) |
-| **Refused:** another wallet tries to confirm with Ada's secret (`UnexpectedWallet`) | [0x1fb53adb…2e33](https://explorer-test.qday.info/tx/0x1fb53adbd771bb8c768daaf4b206790c4b3e4fcd35e11d6e3c41af1e5b092e33) |
-| Ada confirms from her own wallet | [0x3e59c667…eab](https://explorer-test.qday.info/tx/0x3e59c6677d880ebfae90425aa0a0309dfe359552cce25601dfa457ac88d35eab) |
-| Assistant drafts Ada's $0.50 run (agent CLI) | [0xe9ce3f95…eaf8](https://explorer-test.qday.info/tx/0xe9ce3f9509fac596de17fd3e7ce331adf8357b9e366bee6a7df8e6e94befeaf8) |
-| **Refused:** a poisoned $1 draft for Ada (`PerPayeeCapExceeded`) | [0x57676985…851f](https://explorer-test.qday.info/tx/0x576769855e47e51f2d4a73fea47b6d7c860bc8c3aa98176a8162edd2870b851f) |
-| Owner approves | [0x583edf38…c124](https://explorer-test.qday.info/tx/0x583edf380cb7a34ec3536f9f1f42d68fb53c3b321f30eefd0835bad9a0bdc124) |
-| Owner signs and pays: $0.50 to Ada | [0x9a83f5f8…cf29](https://explorer-test.qday.info/tx/0x9a83f5f89a9b6696565c3407ff7577fb2d528e8647efd388db13e54a0b17cf29) |
-| Assistant drafts a $0.25 run, owner cancels | [0x945a34d7…455c](https://explorer-test.qday.info/tx/0x945a34d7260db0e7e68727fcaa6f5f4c7f00da187f020a834dd159016079455c), [0x1b72242d…0f06](https://explorer-test.qday.info/tx/0x1b72242dcd97b7560eee16e66e66300578fa9044ffcd70d656926dafd9d70f06) |
-| The same run drafted again after the cancel | [0x2351d7d5…edd5](https://explorer-test.qday.info/tx/0x2351d7d595f7be22654695ef205aa59ddfb8e799fc9bc601513d472bb3efedd5) |
-| Owner switches the assistant off | [0xaebaad40…f795](https://explorer-test.qday.info/tx/0xaebaad407747cd2e050ef7f93dbbff6a0a1eee18082afc27f2ccad28b58bf795) |
-| **Refused:** the assistant tries to draft after the switch-off (`PolicyRevoked`) | [0xf877f0f0…2def](https://explorer-test.qday.info/tx/0xf877f0f02abed8ef5eea320493502449e2c30d1cd4bfd655dfc4990e01102def) |
+| Create vault (60 s review window) | [0x88a51701…7f26](https://explorer-test.qday.info/tx/0x88a51701ca116141dac8444c70a97d6843586f8f3aee7ba57546ca2101f97f26) |
+| Deposit $0.50 | [0x785b5879…f218](https://explorer-test.qday.info/tx/0x785b5879f823fce927232e18d46e95f44990add328883903e9700452ebbaf218) |
+| Set the assistant's limits | [0xeb6e1ce3…0fce](https://explorer-test.qday.info/tx/0xeb6e1ce30d9f1979f0d151bd216488acd01dcba0fcf212ef8ffa02fc4ad00fce) |
+| Register the assistant's identity | [0x1a8470ed…b9ed](https://explorer-test.qday.info/tx/0x1a8470eda977c5fd8bc538b042d5f21001d5a34d30ad116669ff0d63b71db9ed) |
+| Invite Ada, bound to her wallet | [0x2ca27d0c…d961](https://explorer-test.qday.info/tx/0x2ca27d0c719982a9cd31bb3e45c5edb8b71fdd747f36eaf095c140392f3fd961) |
+| **Refused:** another wallet tries to confirm with Ada's secret (`UnexpectedWallet`) | [0x9055f17d…f3df](https://explorer-test.qday.info/tx/0x9055f17d6b11d31a859ad4ebfe72253597a6c9615861d17d7614181effa1f3df) |
+| Ada confirms from her own wallet | [0xa9dbb3b1…9689](https://explorer-test.qday.info/tx/0xa9dbb3b183f8d94f4b266d6ffdbbd7fd29ed352d55c3bc68c60db674b1779689) |
+| Ada signs her $0.50 line (EIP-712, off-chain, no gas, so no transaction) | n/a |
+| Assistant drafts Ada's signed $0.50 run (agent CLI) | [0x94b0a801…6c30](https://explorer-test.qday.info/tx/0x94b0a80127db9bcd7c5d4ace7f8f8346ee0563d636d38709f3f72e6ca6886c30) |
+| **Refused:** a line signed by the wrong key (`InvalidWorkerSignature`) | [0xfa525d12…a47a](https://explorer-test.qday.info/tx/0xfa525d12ef1c1b965b5d14a25e3555b32b3d6531cbcaa3d71a23b55d2347a47a) |
+| **Refused:** a line with no signature (`InvalidWorkerSignature`) | [0x65321342…870f](https://explorer-test.qday.info/tx/0x6532134251d6f0dfc89323f5b352b95cca6f2e755a5ed11b899f73d78faa870f) |
+| Owner approves | [0xdaba5573…20fd](https://explorer-test.qday.info/tx/0xdaba557382db29595fe59762e4548ad41864c371c63bdf4f43edbf6c418a20fd) |
+| Owner signs and pays: $0.50 to Ada | [0x3f9c88f1…0318](https://explorer-test.qday.info/tx/0x3f9c88f12399a2da3a890525847fc136db45160816e57036bda76527065a0318) |
+| **Refused:** the same signed line in a second run (`LineAlreadyPaid`) | [0x0c3c6baa…bcac](https://explorer-test.qday.info/tx/0x0c3c6baa99ee3964f140650c86b12b7ac60fe60d95953fafd87559939f1bbcac) |
+| Owner switches the assistant off | [0xe495834f…db4f](https://explorer-test.qday.info/tx/0xe495834f0bc53127fdfd50c84ca2d258131a19738a72f572986708f82d05db4f) |
+| **Refused:** the assistant tries to draft after the switch-off (`PolicyRevoked`) | [0xf2ee48f0…3c41](https://explorer-test.qday.info/tx/0xf2ee48f0fa621f815a210f44f867fbb1fe66cf23d74a6aa606166af007d83c41) |
 
 The refused rows were sent on purpose, with a fixed gas limit, so the refusal is recorded on-chain. In normal use the agent simulates first and never sends them.
 
-The demo video was recorded on the previous deployment (factory `0xC128…80DA`). That payday is also on the explorer: [pay transaction](https://explorer-test.qday.info/tx/0x5ee35c50dedf2b4aa8e92dbd6b405efde04146e0f280b52df94cb18afce87640).
+The demo video was recorded on an earlier deployment (factory `0xC128…80DA`), before workers signed their lines. That payday is also on the explorer: [pay transaction](https://explorer-test.qday.info/tx/0x5ee35c50dedf2b4aa8e92dbd6b405efde04146e0f280b52df94cb18afce87640).
 
 ## Run it yourself
 
@@ -283,14 +291,14 @@ Create `payees.json` with the names and salts you invited (the salt is in the in
 ```
 
 ```bash
-npm run propose -- examples/timesheet.txt payees.json
+npm run propose -- signed-timesheet.json payees.json
 ```
 
-A timesheet is lines of `name, hours, rate`, with an optional first line `memo: Week 12`. With an LLM key set, an LLM reads free-form timesheets into JSON. With `USE_LLM_PARSER=false`, or if the LLM call fails, the plain parser is used. Either way, plain code validates the result and simulates the call before sending it. It retries with backoff and waits for receipts. The contract is the final judge: a poisoned timesheet that passes the agent's checks is still refused on-chain.
+The assistant proposes from a signed timesheet: `{ "memo": "Week 12", "lines": [{ "name": "Ada Lovelace", "amount": "1020.00", "signature": "0x..." }] }`. Each worker makes their line and signature on the app's `/hours` page (hours x rate, signed with their confirmed wallet, no gas). The agent checks every signature off-chain and names the person if one is missing or wrong. A plain timesheet (lines of `name, hours, rate`, optional first line `memo: Week 12`) is read by the rule parser, or by an LLM if a key is set (`USE_LLM_PARSER=false` forces the rule parser); that gives the amounts the workers then sign. Either way, plain code validates the result and simulates the call before sending it. It retries with backoff and waits for receipts. The contract is the final judge: a poisoned timesheet that passes the agent's checks is still refused on-chain.
 
 ```bash
 npm test                 # includes a local-chain test that deploys the real contracts
-npm run attack-test      # 45 attacks against a fresh vault on Aevum testnet; writes docs/ATTACK-TEST.md
+npm run attack-test      # 63 attacks against a fresh vault on Aevum testnet; writes docs/ATTACK-TEST.md
 ```
 
 The integration test needs `anvil` and a built `contracts/out` (`forge build`). It is skipped if `anvil` is missing.
@@ -315,7 +323,8 @@ cast send $VAULT "invitePayee(bytes32,address)" $ID $ADA_WALLET --private-key $O
 cast send $VAULT "confirmPayee(string,bytes32)" "Ada" $SALT --private-key $ADA_KEY --rpc-url $RPC_URL
 
 # Assistant: draft a run (its only power)
-cast send $VAULT "proposeRun(bytes32[],uint256[],bytes32)" "[$ID]" "[500000]" $(cast keccak "Week 48") \
+# SIG is Ada's EIP-712 PayLine(payeeId, amount, memoHash) signature, made in the app at /hours
+cast send $VAULT "proposeRun(bytes32[],uint256[],bytes32,bytes[])" "[$ID]" "[500000]" $(cast keccak "Week 48") "[$SIG]" \
   --private-key $AGENT_PRIVATE_KEY --rpc-url $RPC_URL
 
 # Owner: approve, then pay once the review window has passed

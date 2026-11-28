@@ -44,7 +44,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(here, "..", "..");
 loadEnv({ path: resolve(ROOT, ".env") });
 
-const FACTORY = "0x624C478779CCc80299bAa2A22833bab88e18198E" as Address;
+const FACTORY = "0xfaC8ebb7D8f494618068B7eF86FF9A0767b34209" as Address;
 const TUSD8 = "0x456569838f1d43009A91ebA4263147Afd7233483" as Address;
 const EXPLORER = "https://explorer-test.qday.info";
 const RPC = process.env.RPC_URL ?? "https://rpc-test.qday.info";

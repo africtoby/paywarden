@@ -1,25 +1,27 @@
 // Generated from docs/attack-test-results.json (the attack test on Aevum testnet).
 // One real on-chain refusal per contract error, linked from the "Try it without a wallet" page.
 export const PROOF: Record<string, `0x${string}`> = {
-  UnexpectedWallet: "0x10b64ca31c9617ce1a2d1f3eb7ad3ebcf7238c7b81de53d3249f00542cb2cb67",
-  NotAgent: "0xd85178d12e48f89bca86f36ef1b62729628af1716fe2d89162f4cb888eaafdf5",
-  PerPayeeCapExceeded: "0x78220a17a12e86dedf3631cc03555a6350e476b06ca90b0b841c852b70d41c92",
-  PerRunCapExceeded: "0x1eb439e3567f26e4ae823f1d745a8e93b76b7afeb12e2141083bde94fb31edde",
-  PeriodCapExceeded: "0x33e2cb0e5af71960629e1f6ee7dc15981d12a4fa5bdb3f23b563eba0096412dd",
-  PayeeNotConfirmed: "0xf9356c56264fb72382e8ca51f7edbbeb8aed455c9b20a5c4e4cf79b510a79a1e",
-  DuplicatePayee: "0xd2110c4a0a440869d25bb00707c1517af20248e1e47538dd3698972da14ad722",
-  EmptyRun: "0x23c08d561a6ae49216a7f04bb4c1cbe49447231edac3bb039d75ea3fa1d94e50",
-  LengthMismatch: "0xc5dbcc9ab4103085056f26e1264144ffe16e87509ce1f0ab4c81945de24dbbfc",
-  ZeroAmount: "0x9033db4e18b5dfb8e374b687c59ffa9a55a2366ffe5b40b8703d3d4673a9ce82",
-  TooManyPayees: "0x588c2d2dbd5d5f989f3ece7020ba0e667ea6803dc9d5bcd4f5f6f673abc06863",
-  ReviewWindowOpen: "0x5af83f48216621e3e2d1df22c6546aeb155b1bd6728b97d9fdcedaf077e555d8",
-  DuplicateRun: "0x497762eba684edba0e218aaa165c6150d4bf6ee20492e6ab7e3a79eabe8b7cf6",
-  OwnableUnauthorizedAccount: "0xd88bc728a1c6e8c1bbabae043d273858bd2872a81ef5927c8ae871b6da589e56",
-  RunNotApproved: "0x15e6d65cee46e62883d745823f18ed0fa71151fc0f4d3a7747d25cb2ea606fbe",
-  EnforcedPause: "0xf3181bb37f62668b9b1689fac8539585bf549154ba7d69e98acf4966392769d7",
-  PolicyExpired: "0x657840caf210735b9e09692209963f533ce58e487fd32fdcd9ae16b812fe5b3c",
-  PolicyRevoked: "0x1c3a13ea3965d29c5f966526482a2ff4738953d6ebd20eea395104c63a7badec",
+  UnexpectedWallet: "0x0d3066e89ed84d8e1c4c109328f6b3388e680b077f80a4ffd5a47dfe4bd90736",
+  NotAgent: "0x09a2489e8182e478b6235f299a9ecd94f3f0c544a7ee085e2026f3f8b3f550d6",
+  PerPayeeCapExceeded: "0x8e63bd19bae42e2a13fd2221f7c8de1dc5b358cb73523126c764dc77104af483",
+  PerRunCapExceeded: "0xbab66d05f3d3d35bece5c73c7f8fca56b4634b03474660e8569233ca9173b144",
+  PeriodCapExceeded: "0xcd456499d1eedd194854cc71ed06e07362b81ed06b9a3261ac4097a74c04b0f8",
+  PayeeNotConfirmed: "0x38febd7f62161988d9bf7ff9541d93f09421f3bb4220ff671b958670c8be744c",
+  DuplicatePayee: "0xb6d8518d9cc128d310fa87dd3031c66b519afed559cfe52f260888eca7faeb3f",
+  EmptyRun: "0xf4af87b2aacec3526953db2d74660e0c90eb77a862c2e6f7d365fafbf3c128ee",
+  LengthMismatch: "0xafafbcbe503afd2c352355d7864991fe1389a50bcff9bc6f9306c7fd2a23ea2f",
+  ZeroAmount: "0x6f95b5a35dd4e28aa2a2a14f769f31e440a3f5c9b305a8667f146b17abd642c5",
+  TooManyPayees: "0x45b911b9b6a22e0331dd175949d4505d539c9e730f41bb9d5d9c2845c580c197",
+  ReviewWindowOpen: "0xcbfe2262b136a46307a501370a652363367af1de663cb530769d99d9f8daf026",
+  DuplicateRun: "0x591e1485c69620b9f0fd4d4a24462291c0611b02a4a34d93385b0a00d293245e",
+  OwnableUnauthorizedAccount: "0xc68af93b7325acff9fb196670bc2bb16d46b6773508dccf0eb2ac047c704c1a6",
+  RunNotApproved: "0xfd76d99fe9ee3ed6351a21a07737e9568dfb176860bff84f17ceeab57fb744f1",
+  EnforcedPause: "0x0fdc9d88086ef118c41a15d0a4c7a5fe9c68bea6167f5a471086c0dc375d0e6d",
+  PolicyExpired: "0x079ab04003c785346a362406f80a047949801bfd2506a230a012529660d7bb79",
+  PolicyRevoked: "0x1e5341724d202657544ce7c9d801c75c0e6e9da327df666624f024273cfb3758",
+  LineAlreadyPaid: "0x96e1f84ec28e086c2d8176d6d4fb8327574e301abb59a5ba6bf410e95bf60d2c",
+  InvalidWorkerSignature: "0xda57cd58c2853a31d7d39412164849c15c19530ba17513ffd509a8d142f650f2",
 };
 
 /** A real PayWarden payment on Aevum: $0.50 to Ada from the demo vault. */
-export const PAID_TX = "0x9a83f5f89a9b6696565c3407ff7577fb2d528e8647efd388db13e54a0b17cf29" as const;
+export const PAID_TX = "0x3f9c88f12399a2da3a890525847fc136db45160816e57036bda76527065a0318" as const;
