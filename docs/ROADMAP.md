@@ -8,15 +8,15 @@ Today they either:
 - paste addresses into a multisig by hand every payday (slow, and one typo sends money to the wrong place), or
 - give a script or bot a hot wallet (fast, but one bug or one poisoned input can drain it).
 
-PayWarden sits between the two. The assistant does the tedious part: reading timesheets, matching names, adding it up. The contract holds the money and the rules, and the owner keeps the final signature.
+PayWarden sits between the two. The assistant does the tedious part: reading timesheets, matching names, adding it up. Each worker signs their own line, so nothing in it can be invented. The contract holds the money and the rules, and the owner keeps the final signature.
 
 **Why now:** AI assistants are starting to act on money. "Agentic payments" need guardrails that live outside the agent: limits the agent cannot change, and a human who signs. PayWarden is that pattern applied to the most repetitive payment there is.
 
 ## How it fits into a real payday
 
-1. Contractors submit hours the way they already do (a sheet, a form, an email). The assistant reads them.
+1. Contractors submit hours the way they already do and sign their own pay line once, in the app, with no gas. The assistant reads the signed timesheet.
 2. The assistant drafts the run. The contract checks it against the caps; anything outside them is refused before a person ever sees it.
-3. The owner gets one card to review: who, which confirmed wallet, how much, and seven green checks. They sign once and everyone is paid in one transaction.
+3. The owner gets one card to review: who, which confirmed wallet, how much, and eight green checks. They sign once and everyone is paid in one transaction.
 4. Every step is an on-chain event, so the activity log doubles as an audit trail for accounting.
 
 ## Business model
@@ -39,7 +39,7 @@ The core contracts stay open source. The business is in the hosting, the integra
 
 | When | What |
 | --- | --- |
-| **Done (hackathon)** | Vault, factory, spend policy and identity registry on Aevum testnet, verified. Wallet-bound invites against front-running. Re-proposing a cancelled run. Agent with an LLM or plain parser, retries and idempotency. Web app with review-and-sign, an activity log and a backup of invites. CI on every push. |
+| **Done (hackathon)** | Vault, factory, spend policy and identity registry on Aevum testnet, verified. Wallet-bound invites against front-running. Worker-signed pay lines (EIP-712): the assistant can only propose lines the payee signed, and a signed line is paid once. Re-proposing a cancelled run. Agent with an LLM or plain parser, retries and idempotency. Web app with review-and-sign, an activity log and a backup of invites. CI on every push. |
 | **Dec 2026 to Jan 2027** | Recurring paydays (the agent drafts on a schedule; the owner still signs). CSV and accounting export. Several approvers (2-of-3 sign-off). Hosted live demo. |
 | **Feb 2027: QDay mainnet** | External security review. Mainnet deployment with real stablecoins. Use QDay's own ERC-8004 identity registry if they publish one. |
 | **Q2 2027** | ERC-4337 smart accounts: the assistant gets a scoped session key with the same caps, and a paymaster sponsors gas so payees never need gas to confirm. The `AgentSpendPolicy` already works like a scoped session key (one key, hard caps, expiry, instant revoke); 4337 makes it native. |

@@ -8,18 +8,21 @@ PayWarden splits the job in two. The assistant does the reading and drafting. A 
 
 ## Three gates
 
-Every pay run passes three gates, in this order:
+Every pay run starts with a signature from the worker, then passes three gates, in this order:
 
-1. **The assistant drafts.** It reads a timesheet and calls `proposeRun(payeeIds, amounts, memoHash)`. That is the only thing its key can do. It cannot approve, pay, withdraw or change its own limits.
+0. **The worker signs.** Each payee signs their own pay line (payee, amount, memo) with the wallet they confirmed. It is an EIP-712 signature, so it costs no gas. Without it, the contract will not accept the line.
+
+1. **The assistant drafts.** It reads the signed timesheet and calls `proposeRun(payeeIds, amounts, memoHash, signatures)`. That is the only thing its key can do. It cannot approve, pay, withdraw or change its own limits.
 2. **The contract checks.** Before a draft is even stored, the vault and its spend policy check it. If any check fails, the proposal reverts with a named error and nothing is recorded:
    - every payee is confirmed (`PayeeNotConfirmed`)
+   - every line is signed by that payee's confirmed wallet (`InvalidWorkerSignature`), and has not been paid before (`LineAlreadyPaid`)
    - no one is paid more than the per-person cap (`PerPayeeCapExceeded`)
    - the run is under the per-run cap (`PerRunCapExceeded`)
    - the period total stays under the period cap (`PeriodCapExceeded`)
    - the assistant's permission has not expired or been switched off (`PolicyExpired`, `PolicyRevoked`)
    - the vault is not paused
    - the same run has not been proposed before (`DuplicateRun`)
-3. **You sign.** The draft waits for a review window. You see each payee, their confirmed wallet, the amount and all seven checks. You approve, then sign and pay. `executeRun` pays everyone in a single transaction and can run only once per run.
+3. **You sign.** The draft waits for a review window. You see each payee, their confirmed wallet, the amount and all eight checks. You approve, then sign and pay. `executeRun` pays everyone in a single transaction and can run only once per run.
 
 The caps are checked again at payment time, so the limits cannot be dodged by waiting.
 
@@ -34,13 +37,15 @@ The caps are checked again at payment time, so the limits cannot be dodged by wa
 
 **Confirmation of payee.** You invite someone by a hash of their name and a secret salt. You also give their wallet address, so only that wallet can accept the invite, even if someone copies the secret. They open the invite link and confirm from that wallet. From then on, that wallet is the only place their pay can go. A typo in an address, or an attacker's address slipped into a timesheet, has nowhere to land.
 
+**Worker-signed pay lines.** Once confirmed, the payee signs what they are owed: a typed message with their payee id, the amount and the memo (the period). The vault checks the signature against the confirmed wallet, for ordinary wallets and smart-contract wallets alike. So the assistant cannot invent a line, inflate hours or add a payee, and a signed line is paid once.
+
 Money is tUSD8, a test dollar with 6 decimals, so the app shows it in dollars.
 
 ## Case study: a real payday on the testnet
 
-Everything below happened on QDay Aevum testnet (chain 44005) on 27 November 2026, on the current contracts. You can check every step on the explorer. The demo video shows the same payday on the previous deployment.
+Everything below happened on QDay Aevum testnet (chain 44005) on 28 November 2026, on the current contracts. You can check every step on the explorer. The demo video shows an earlier payday on the previous deployment, before workers signed their lines.
 
-**The setup.** An employer creates a vault ([0x1712…3C76](https://explorer-test.qday.info/address/0x171290CcBA179A9B8f89ff408134F09F33Da3C76)) from the factory and deposits $1. They give the assistant ([0x0994…9C16](https://explorer-test.qday.info/address/0x0994F68DF677250e8C5C021FCeBb0B4325819C16)) these limits:
+**The setup.** An employer creates a vault ([0xDa9E…3273](https://explorer-test.qday.info/address/0xDa9E2AF624d26C0015E3e3a62BF2eEdD4bf13273)) from the factory ([0x88a51701…7f26](https://explorer-test.qday.info/tx/0x88a51701ca116141dac8444c70a97d6843586f8f3aee7ba57546ca2101f97f26)) and deposits $0.50 ([0x785b5879…f218](https://explorer-test.qday.info/tx/0x785b5879f823fce927232e18d46e95f44990add328883903e9700452ebbaf218)). They give the assistant ([0x0994…9C16](https://explorer-test.qday.info/address/0x0994F68DF677250e8C5C021FCeBb0B4325819C16)) these limits ([0xeb6e1ce3…0fce](https://explorer-test.qday.info/tx/0xeb6e1ce30d9f1979f0d151bd216488acd01dcba0fcf212ef8ffa02fc4ad00fce)):
 
 | Limit | Value |
 | --- | --- |
@@ -49,32 +54,28 @@ Everything below happened on QDay Aevum testnet (chain 44005) on 27 November 202
 | Per period | $10 every 7 days |
 | Permission lasts | 90 days |
 
-**The payee.** The employer invites "Ada" and gives her wallet address (0x309b…8E60). A second wallet then copies Ada's secret and tries to confirm first. That is what a watcher of pending transactions could do. The contract refuses it with `UnexpectedWallet` ([0x1fb53adb…2e33](https://explorer-test.qday.info/tx/0x1fb53adbd771bb8c768daaf4b206790c4b3e4fcd35e11d6e3c41af1e5b092e33)). Ada confirms from her own wallet ([0x3e59c667…eab](https://explorer-test.qday.info/tx/0x3e59c6677d880ebfae90425aa0a0309dfe359552cce25601dfa457ac88d35eab)), and her wallet is now linked to her name in the vault and in the identity registry.
+**The payee.** The employer invites "Ada" and gives her wallet address ([0x2ca27d0c…d961](https://explorer-test.qday.info/tx/0x2ca27d0c719982a9cd31bb3e45c5edb8b71fdd747f36eaf095c140392f3fd961)). A second wallet then copies Ada's secret and tries to confirm first. That is what a watcher of pending transactions could do. The contract refuses it with `UnexpectedWallet` ([0x9055f17d…f3df](https://explorer-test.qday.info/tx/0x9055f17d6b11d31a859ad4ebfe72253597a6c9615861d17d7614181effa1f3df)). Ada confirms from her own wallet ([0xa9dbb3b1…9689](https://explorer-test.qday.info/tx/0xa9dbb3b183f8d94f4b266d6ffdbbd7fd29ed352d55c3bc68c60db674b1779689)), and her wallet is now linked to her name in the vault and in the identity registry.
 
-**An honest timesheet.** The assistant reads Ada's timesheet and proposes a run of $0.50:
+**The worker signs.** Ada opens the invite link on the app's hours page, enters her hours and rate, and signs her pay line: her payee id, the amount ($0.50) and the memo. It is an EIP-712 signature made in her wallet. It costs no gas, so there is no transaction for it. The line now carries something the assistant cannot make.
+
+**An honest, signed timesheet.** The assistant reads the signed timesheet, checks Ada's signature off-chain, and proposes a run of $0.50:
 
 ```
-Ada: $0.50
+Ada: $0.50 (signed by Ada)
 Proposed. The owner can review it now.
 ```
 
-([0xe9ce3f95…eaf8](https://explorer-test.qday.info/tx/0xe9ce3f9509fac596de17fd3e7ce331adf8357b9e366bee6a7df8e6e94befeaf8))
+([0x94b0a801…6c30](https://explorer-test.qday.info/tx/0x94b0a80127db9bcd7c5d4ace7f8f8346ee0563d636d38709f3f72e6ca6886c30))
 
-The run card shows all seven checks passing. The employer opens "Review and sign", sees Ada, her confirmed wallet and $0.50, types their name and signs. After the owner approves and the review window passes, one transaction pays Ada: [0x9a83f5f8…cf29](https://explorer-test.qday.info/tx/0x9a83f5f89a9b6696565c3407ff7577fb2d528e8647efd388db13e54a0b17cf29). The explorer shows 0.5 tUSD8 moving from the vault to Ada's wallet.
+The contract checked Ada's signature against the wallet she confirmed, and the run card shows all eight checks passing. The employer opens "Review and sign", sees Ada, her confirmed wallet and $0.50, types their name and signs. After the owner approves ([0xdaba5573…20fd](https://explorer-test.qday.info/tx/0xdaba557382db29595fe59762e4548ad41864c371c63bdf4f43edbf6c418a20fd)) and the review window passes, one transaction pays Ada: [0x3f9c88f1…0318](https://explorer-test.qday.info/tx/0x3f9c88f12399a2da3a890525847fc136db45160816e57036bda76527065a0318). The explorer shows 0.5 tUSD8 moving from the vault to Ada's wallet.
 
-**A poisoned timesheet.** Next, a timesheet asks for $1.00 for Ada. Imagine an injected line, or a typo. The assistant's own checks could be fooled, but the contract cannot:
+**Lines nobody signed.** Imagine a poisoned timesheet or an injected line. The assistant's own checks could be fooled, but the contract cannot. A line signed by the wrong key reverts with `InvalidWorkerSignature` ([0xfa525d12…a47a](https://explorer-test.qday.info/tx/0xfa525d12ef1c1b965b5d14a25e3555b32b3d6531cbcaa3d71a23b55d2347a47a)), and so does a line with no signature ([0x65321342…870f](https://explorer-test.qday.info/tx/0x6532134251d6f0dfc89323f5b352b95cca6f2e755a5ed11b899f73d78faa870f)). No run is stored, nothing waits for review, no money moves. The agent simulates first, so it never sends these. To leave proof on-chain, the same drafts were sent anyway.
 
-```
-Refused by the contract: One person's pay ($1) is over the per-person limit ($0.80).
-```
+**Paid once.** The same signed line in a second run reverts with `LineAlreadyPaid` ([0x0c3c6baa…bcac](https://explorer-test.qday.info/tx/0x0c3c6baa99ee3964f140650c86b12b7ac60fe60d95953fafd87559939f1bbcac)). Ada's signature cannot be replayed to pay her twice for the same period.
 
-The agent simulates first, so it never sends this. To leave proof on-chain, the same draft was sent anyway, and it reverts with `PerPayeeCapExceeded` ([0x57676985…851f](https://explorer-test.qday.info/tx/0x576769855e47e51f2d4a73fea47b6d7c860bc8c3aa98176a8162edd2870b851f)). No run is stored, nothing waits for review, no money moves. There is nothing to undo.
+**The off switch.** At the end, the employer switches the assistant off ([0xe495834f…db4f](https://explorer-test.qday.info/tx/0xe495834f0bc53127fdfd50c84ca2d258131a19738a72f572986708f82d05db4f)). The next draft reverts with `PolicyRevoked` ([0xf2ee48f0…3c41](https://explorer-test.qday.info/tx/0xf2ee48f0fa621f815a210f44f867fbb1fe66cf23d74a6aa606166af007d83c41)) until new permissions are set.
 
-**A cancel and a second try.** The assistant drafts a $0.25 run; the owner cancels it. The same run can be drafted again ([0x2351d7d5…edd5](https://explorer-test.qday.info/tx/0x2351d7d595f7be22654695ef205aa59ddfb8e799fc9bc601513d472bb3efedd5)) and goes through review again. Only a paid run can never be drafted twice.
-
-**The off switch.** At the end, the employer switches the assistant off ([0xaebaad40…f795](https://explorer-test.qday.info/tx/0xaebaad407747cd2e050ef7f93dbbff6a0a1eee18082afc27f2ccad28b58bf795)). The next draft reverts with `PolicyRevoked` ([0xf877f0f0…2def](https://explorer-test.qday.info/tx/0xf877f0f02abed8ef5eea320493502449e2c30d1cd4bfd655dfc4990e01102def)) until new permissions are set.
-
-**What it adds up to.** The assistant did the paperwork. The contract refused the bad draft and the copied confirm on its own. The money moved only after the owner signed, only to the wallet Ada confirmed, and only once.
+**What it adds up to.** The worker signed the hours, the assistant did the paperwork, and the owner signed the pay. The contract refused the unsigned and wrongly signed lines, the copied confirm and the replay on its own. The money moved only after the owner signed, only to the wallet Ada confirmed, and only once.
 
 ## Known limits
 

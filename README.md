@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-8DA597?style=flat)](LICENSE)
 
 ![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?style=flat&logo=solidity&logoColor=white)
-![Foundry](https://img.shields.io/badge/Foundry-75_tests-E35F23?style=flat)
+![Foundry](https://img.shields.io/badge/Foundry-95_tests-E35F23?style=flat)
 ![Coverage](https://img.shields.io/badge/coverage-95.7%25-1F6B47?style=flat)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat&logo=nextdotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-agent_+_web-3178C6?style=flat&logo=typescript&logoColor=white)
@@ -31,11 +31,12 @@ An assistant reads a timesheet and drafts a pay run in tUSD8. A smart contract o
 
 > [!TIP]
 > **The 5-minute tour**
-> 1. [Try it without a wallet](https://paywarden.me/try): run a payday in five steps, try to trick the assistant, and watch the contract's checks refuse it.
+> 1. [Try it without a wallet](https://paywarden.me/try): run a payday in six steps, try to trick the assistant, and watch the contract's checks refuse it.
 > 2. Watch the [2-minute demo](https://youtu.be/EGevjYKSC4A).
 > 3. Read the [attack test](docs/ATTACK-TEST.md): 63 of 63 attacks refused on Aevum testnet, 0 wrong payments, every refusal an on-chain transaction.
 > 4. See every address and the commit it was built from in [Deployments](#deployments), and a full payday in [On-chain proof](#on-chain-proof).
-> 5. Use the real app at [paywarden.me](https://paywarden.me) (free test tokens from the [QDay faucet](https://faucet.qday.info/en)). The code as submitted is tagged [`submission-v1`](https://github.com/africtoby/paywarden/tree/submission-v1).
+> 5. See the [rubric map](docs/JUDGE.md): each judging criterion with its evidence and the honest limits.
+> 6. Use the real app at [paywarden.me](https://paywarden.me) (free test tokens from the [QDay faucet](https://faucet.qday.info/en)). The code as submitted is tagged [`submission-v1`](https://github.com/africtoby/paywarden/tree/submission-v1).
 
 ## Watch it
 
@@ -245,7 +246,7 @@ All live in the root `.env` (copy of `.env.example`). The agent reads `agent/.en
 ```bash
 cd contracts
 forge build
-forge test               # 75 tests: unit, fuzz, invariant and every revert path
+forge test               # 95 tests: unit, fuzz (40,000 cases), invariant and every revert path
 forge coverage --report summary
 ```
 
