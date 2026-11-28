@@ -41,6 +41,7 @@ export const agentAccountAbi = parseAbi([
   "function sessionKey() view returns (address)",
   "function sessionVault() view returns (address)",
   "function sessionValidUntil() view returns (uint48)",
+  "function sessionMaxFeePerGas() view returns (uint128)",
   "function getDeposit() view returns (uint256)",
 ]);
 
@@ -103,9 +104,10 @@ export type AccountOutcome = Outcome & { userOpHash?: Hex; onChainTx?: Hex };
 export async function buildProposeOp(deps: AccountDeps, innerData: Hex, target: Address = deps.vault): Promise<{ op: UserOp; hash: Hex }> {
   const ep = deps.entryPoint ?? ENTRY_POINT_V07;
   const callData = encodeFunctionData({ abi: agentAccountAbi, functionName: "execute", args: [target, 0n, innerData] });
-  const [nonce, gasPrice] = await Promise.all([
+  const [nonce, gasPrice, feeCap] = await Promise.all([
     withRetry(() => deps.pub.readContract({ address: ep, abi: entryPointAbi, functionName: "getNonce", args: [deps.smartAccount, 0n] }), 4, deps.baseMs),
     withRetry(() => deps.pub.getGasPrice(), 4, deps.baseMs),
+    withRetry(() => deps.pub.readContract({ address: deps.smartAccount, abi: agentAccountAbi, functionName: "sessionMaxFeePerGas" }), 4, deps.baseMs),
   ]);
   let callGas = 400_000n;
   try {
@@ -113,7 +115,10 @@ export async function buildProposeOp(deps: AccountDeps, innerData: Hex, target: 
   } catch {
     // A refusal is caught by the simulation in submitRunViaAccount; a forced op keeps the default.
   }
-  const fee = (gasPrice * 12n) / 10n;
+  // Stay inside the account's session limits: fee <= the owner's cap, total gas <= MAX_SESSION_GAS (2,000,000).
+  const wanted = (gasPrice * 12n) / 10n;
+  const fee = feeCap > 0n && wanted > feeCap ? feeCap : wanted;
+  if (callGas > 1_790_000n) callGas = 1_790_000n;
   const op: UserOp = {
     sender: deps.smartAccount,
     nonce,

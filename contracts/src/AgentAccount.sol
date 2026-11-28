@@ -14,6 +14,8 @@ import {PayrollVault} from "./PayrollVault.sol";
 ///         The vault's AgentSpendPolicy still caps every amount, so the session key is a second, independent layer.
 contract AgentAccount is IAccountV07 {
     uint256 internal constant SIG_VALIDATION_FAILED = 1;
+    /// @notice Most gas (verification + call + pre-verification) one session-key operation may ask for.
+    uint256 public constant MAX_SESSION_GAS = 2_000_000;
 
     IEntryPointV07 public immutable entryPoint;
     address public immutable owner;
@@ -21,6 +23,9 @@ contract AgentAccount is IAccountV07 {
     address public sessionKey;
     address public sessionVault;
     uint48 public sessionValidUntil;
+    /// @notice Highest maxFeePerGas a session-key operation may offer. With MAX_SESSION_GAS this bounds what one
+    /// operation can take from the gas deposit, so a stolen session key cannot drain it at an inflated price.
+    uint128 public sessionMaxFeePerGas;
 
     error NotEntryPoint(address caller);
     error NotOwner(address caller);
@@ -28,8 +33,9 @@ contract AgentAccount is IAccountV07 {
     error InvalidSessionVault(address vault);
     error InvalidExpiry(uint48 validUntil);
     error NoSessionKey();
+    error InvalidFeeCap();
 
-    event SessionKeySet(address indexed key, address indexed vault, uint48 validUntil);
+    event SessionKeySet(address indexed key, address indexed vault, uint48 validUntil, uint128 maxFeePerGas);
     event SessionKeyRevoked(address indexed key);
     event Executed(address indexed target, uint256 value, bytes4 selector);
 
@@ -80,8 +86,17 @@ contract AgentAccount is IAccountV07 {
         address key = sessionKey;
         if (key == address(0) || signer != key) return SIG_VALIDATION_FAILED;
         if (userOp.initCode.length != 0 || !isSessionCall(userOp.callData)) return SIG_VALIDATION_FAILED;
+        if (!_sessionGasOk(userOp)) return SIG_VALIDATION_FAILED;
         // validationData = validAfter (0) << 208 | validUntil << 160 | authorizer (0 = valid)
         return uint256(sessionValidUntil) << 160;
+    }
+
+    /// @dev Session operations stay under the owner's fee cap and the fixed gas ceiling.
+    function _sessionGasOk(PackedUserOperation calldata userOp) internal view returns (bool) {
+        uint256 limits = uint256(userOp.accountGasLimits);
+        uint256 totalGas = (limits >> 128) + uint128(limits) + userOp.preVerificationGas;
+        uint256 maxFeePerGas = uint128(uint256(userOp.gasFees));
+        return totalGas <= MAX_SESSION_GAS && maxFeePerGas <= sessionMaxFeePerGas;
     }
 
     /// @notice True only for execute(sessionVault, 0, <proposeRun calldata>), the one call a session key may make.
@@ -112,15 +127,21 @@ contract AgentAccount is IAccountV07 {
 
     // ------------------------------------------------------- session key
 
-    /// @notice Gives `key` the right to call proposeRun on `vault` until `validUntil` (a unix time in the future).
-    function setSessionKey(address key, address vault, uint48 validUntil) external onlyOwnerOrSelf {
+    /// @notice Gives `key` the right to call proposeRun on `vault` until `validUntil` (a unix time in the future),
+    /// paying at most `maxFeePerGas` per unit of gas from this account's deposit.
+    function setSessionKey(address key, address vault, uint48 validUntil, uint128 maxFeePerGas)
+        external
+        onlyOwnerOrSelf
+    {
         if (key == address(0)) revert ZeroAddress();
         if (vault == address(0) || vault == address(this)) revert InvalidSessionVault(vault);
         if (validUntil <= block.timestamp) revert InvalidExpiry(validUntil);
+        if (maxFeePerGas == 0) revert InvalidFeeCap();
         sessionKey = key;
         sessionVault = vault;
         sessionValidUntil = validUntil;
-        emit SessionKeySet(key, vault, validUntil);
+        sessionMaxFeePerGas = maxFeePerGas;
+        emit SessionKeySet(key, vault, validUntil, maxFeePerGas);
     }
 
     /// @notice Removes the session key at once; its pending user operations fail validation.
@@ -130,6 +151,7 @@ contract AgentAccount is IAccountV07 {
         delete sessionKey;
         delete sessionVault;
         delete sessionValidUntil;
+        delete sessionMaxFeePerGas;
         emit SessionKeyRevoked(key);
     }
 

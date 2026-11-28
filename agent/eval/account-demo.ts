@@ -70,7 +70,7 @@ async function main() {
   // 2. Gas deposit, session key scoped to proposeRun on this vault for 7 days, and the account as the assistant.
   await ok("Deposit gas at the EntryPoint", owner, smartAccount, accountAbi, "addDeposit", [], parseEther("0.05"));
   const now = BigInt(Math.floor(Date.now() / 1000));
-  await ok("Give the assistant a session key (proposeRun only, 7 days)", owner, smartAccount, accountAbi, "setSessionKey", [session.address, vault, Number(now + 7n * 86400n)]);
+  await ok("Give the assistant a session key (proposeRun only, 7 days)", owner, smartAccount, accountAbi, "setSessionKey", [session.address, vault, Number(now + 7n * 86400n), 10_000_000_000n]);
   await ok("Set the smart account as the assistant, with limits", owner, policy, policyAbi, "setPolicy", [{ agent: smartAccount, perRun: 3n * USD, perPayee: 800_000n, periodCap: 10n * USD, period: 7n * 86400n, expiry: now + 90n * 86400n }]);
 
   // 3. Ada confirms her wallet and signs her line.

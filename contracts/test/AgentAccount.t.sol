@@ -35,6 +35,7 @@ contract AgentAccountTest is Base {
     AgentAccountFactory internal accountFactory;
     AgentAccount internal acct;
     uint48 internal validUntil;
+    uint128 internal constant FEE_CAP = 5 gwei;
 
     function setUp() public override {
         super.setUp();
@@ -47,7 +48,7 @@ contract AgentAccountTest is Base {
         vm.deal(employer, 10 ether);
         vm.startPrank(employer);
         acct.addDeposit{value: 1 ether}();
-        acct.setSessionKey(session, address(vault), validUntil);
+        acct.setSessionKey(session, address(vault), validUntil, FEE_CAP);
         // The vault's assistant is now the smart account; the same caps still apply to it.
         policy.setPolicy(
             AgentSpendPolicy.Policy({
@@ -186,7 +187,7 @@ contract AgentAccountTest is Base {
             _exec(
                 address(acct),
                 0,
-                abi.encodeCall(AgentAccount.setSessionKey, (session, address(vault), type(uint48).max))
+                abi.encodeCall(AgentAccount.setSessionKey, (session, address(vault), type(uint48).max, FEE_CAP))
             ),
             SESSION_KEY,
             "AA24 signature error"
@@ -219,6 +220,7 @@ contract AgentAccountTest is Base {
         vm.prank(employer);
         acct.revokeSessionKey();
         assertEq(acct.sessionKey(), address(0));
+        assertEq(acct.sessionMaxFeePerGas(), 0);
         _expectRefused(
             _exec(address(vault), 0, _proposeData(1 * USD, 1 * USD, MEMO)), SESSION_KEY, "AA24 signature error"
         );
@@ -256,7 +258,9 @@ contract AgentAccountTest is Base {
         _send(
             _op(
                 _exec(
-                    address(acct), 0, abi.encodeCall(AgentAccount.setSessionKey, (newKey, address(vault), validUntil))
+                    address(acct),
+                    0,
+                    abi.encodeCall(AgentAccount.setSessionKey, (newKey, address(vault), validUntil, FEE_CAP))
                 ),
                 EMPLOYER_KEY
             )
@@ -296,7 +300,7 @@ contract AgentAccountTest is Base {
         acct.execute(address(vault), 0, _proposeData(1 * USD, 1 * USD, MEMO));
         vm.prank(session);
         vm.expectRevert(abi.encodeWithSelector(AgentAccount.NotOwner.selector, session));
-        acct.setSessionKey(session, address(vault), validUntil);
+        acct.setSessionKey(session, address(vault), validUntil, FEE_CAP);
         vm.prank(session);
         vm.expectRevert(abi.encodeWithSelector(AgentAccount.NotOwner.selector, session));
         acct.revokeSessionKey();
@@ -314,13 +318,15 @@ contract AgentAccountTest is Base {
     function test_set_session_key_guards() public {
         vm.startPrank(employer);
         vm.expectRevert(AgentAccount.ZeroAddress.selector);
-        acct.setSessionKey(address(0), address(vault), validUntil);
+        acct.setSessionKey(address(0), address(vault), validUntil, FEE_CAP);
         vm.expectRevert(abi.encodeWithSelector(AgentAccount.InvalidSessionVault.selector, address(0)));
-        acct.setSessionKey(session, address(0), validUntil);
+        acct.setSessionKey(session, address(0), validUntil, FEE_CAP);
         vm.expectRevert(abi.encodeWithSelector(AgentAccount.InvalidSessionVault.selector, address(acct)));
-        acct.setSessionKey(session, address(acct), validUntil);
+        acct.setSessionKey(session, address(acct), validUntil, FEE_CAP);
         vm.expectRevert(abi.encodeWithSelector(AgentAccount.InvalidExpiry.selector, uint48(block.timestamp)));
-        acct.setSessionKey(session, address(vault), uint48(block.timestamp));
+        acct.setSessionKey(session, address(vault), uint48(block.timestamp), FEE_CAP);
+        vm.expectRevert(AgentAccount.InvalidFeeCap.selector);
+        acct.setSessionKey(session, address(vault), validUntil, 0);
         vm.expectRevert(AgentAccount.ZeroAddress.selector);
         acct.withdrawDepositTo(payable(address(0)), 1);
         acct.revokeSessionKey();
@@ -354,6 +360,79 @@ contract AgentAccountTest is Base {
         (bool ok,) = address(acct).call{value: 0.2 ether}("");
         assertTrue(ok);
         assertEq(address(acct).balance, 0.2 ether);
+    }
+
+    // ------------------------------------------------------- gas limits
+
+    function _withGas(
+        bytes memory callData,
+        uint256 verGas,
+        uint256 callGas,
+        uint256 preGas,
+        uint256 maxFee,
+        uint256 key
+    ) internal view returns (PackedUserOperation memory op) {
+        op = _op(callData, key);
+        op.accountGasLimits = bytes32((verGas << 128) | callGas);
+        op.preVerificationGas = preGas;
+        op.gasFees = bytes32((uint256(1 gwei) << 128) | maxFee);
+        op.signature = _signOp(op, key);
+    }
+
+    function _expectOpRefused(PackedUserOperation memory op, string memory reason) internal {
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        ops[0] = op;
+        vm.prank(bundler, bundler);
+        vm.expectRevert(abi.encodeWithSelector(FailedOp.selector, 0, reason));
+        EP.handleOps(ops, bundler);
+    }
+
+    function test_session_key_cannot_overpay_for_gas() public {
+        bytes memory call = _exec(address(vault), 0, _proposeData(1 * USD, 1 * USD, MEMO));
+        _expectOpRefused(_withGas(call, 200_000, 600_000, 60_000, FEE_CAP + 1, SESSION_KEY), "AA24 signature error");
+    }
+
+    function test_session_key_cannot_ask_for_too_much_gas() public {
+        bytes memory call = _exec(address(vault), 0, _proposeData(1 * USD, 1 * USD, MEMO));
+        _expectOpRefused(_withGas(call, 200_000, 1_800_000, 60_000, 2 gwei, SESSION_KEY), "AA24 signature error");
+    }
+
+    function test_session_key_at_the_limits_is_accepted() public {
+        bytes memory call = _exec(address(vault), 0, _proposeData(1 * USD, 1 * USD, MEMO));
+        _send(_withGas(call, 200_000, 1_740_000, 60_000, FEE_CAP, SESSION_KEY));
+        assertEq(uint8(vault.runStatus(_runKey(1 * USD, 1 * USD, MEMO))), uint8(PayrollVault.Status.Proposed));
+    }
+
+    function test_owner_is_not_bound_by_session_gas_limits() public {
+        address newKey = makeAddr("k2");
+        _send(
+            _withGas(
+                _exec(
+                    address(acct),
+                    0,
+                    abi.encodeCall(AgentAccount.setSessionKey, (newKey, address(vault), validUntil, FEE_CAP))
+                ),
+                200_000,
+                2_000_000,
+                60_000,
+                FEE_CAP * 2,
+                EMPLOYER_KEY
+            )
+        );
+        assertEq(acct.sessionKey(), newKey);
+    }
+
+    function testFuzz_session_gas_bounded(uint256 callGas, uint256 maxFee) public {
+        callGas = bound(callGas, 100_000, 3_000_000);
+        maxFee = bound(maxFee, 1 gwei, 20 gwei);
+        bytes memory call = _exec(address(vault), 0, _proposeData(1 * USD, 1 * USD, MEMO));
+        PackedUserOperation memory op = _withGas(call, 200_000, callGas, 60_000, maxFee, SESSION_KEY);
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        ops[0] = op;
+        bool allowed = 200_000 + callGas + 60_000 <= acct.MAX_SESSION_GAS() && maxFee <= FEE_CAP;
+        vm.prank(bundler, bundler);
+        if (!allowed) vm.expectRevert(abi.encodeWithSelector(FailedOp.selector, 0, "AA24 signature error"));
+        EP.handleOps(ops, bundler);
     }
 
     // ---------------------------------------------------------------- fuzz

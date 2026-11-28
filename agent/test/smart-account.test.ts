@@ -98,7 +98,7 @@ describe.skipIf(!anvilBin)("agent through an ERC-4337 smart account (local anvil
     smartAccount = (parseEventLogs({ abi: afAbi, logs: arc.logs, eventName: "AccountCreated" })[0]!.args as { account: Address }).account;
     const aAbi = artifact("AgentAccount", "AgentAccount").abi;
     const now = Number((await pub.getBlock()).timestamp);
-    await send(owner.writeContract({ address: smartAccount, abi: aAbi, functionName: "setSessionKey", args: [sessionKey.address, vault, now + 86_400] }));
+    await send(owner.writeContract({ address: smartAccount, abi: aAbi, functionName: "setSessionKey", args: [sessionKey.address, vault, now + 86_400, 100_000_000_000n] }));
     await send(owner.writeContract({ address: smartAccount, abi: aAbi, functionName: "addDeposit", value: 10n ** 18n }));
 
     const pAbi = artifact("AgentSpendPolicy", "AgentSpendPolicy").abi;
